@@ -1,0 +1,266 @@
+<template lang="jade">
+  div.content-box
+    lotteryDialog(v-if="dialog == true",@changeTableList="getRecordListData",:isMe="isMe")
+    .content
+      div.header-search
+        .lottery(@click="showLotteryLog")
+          {{ changeLotteryName }}
+        ul.tabBar
+          li(v-for="item,index in headSearch",:key="index",:class="colors == item.id ? 'clickIn' : '' ",@click="getRecordListData(item.id)")
+            {{item.name}}
+      noneRecord(v-if="allData.length == 0")
+      div.tab-content(v-else)
+        div.allBill
+          p.table-head
+            span 注单号
+            span 下注详情
+            span 下注金额
+            span 输赢金额
+          .pull-contianer
+            PullTo.pull-to(:top-load-method="topRefresh",:bottom-load-method="bottomRefresh")
+              .table-content
+                ul
+                  li(v-for="item,index in allData",:key="index",@click="showDetail(index)",:class="listColor == index ? 'addListColor':''") 
+                    span {{item.betNo | getBetNo }}
+                    span {{item.betOnValue}}@{{ item.odds }}
+                    span {{item.amount}}
+                    span {{item.winLoss}}
+                    .detail-box(v-if="showDetailBox && theIndex == index")
+                      p.betNo 注单号：
+                        span {{item.betNo | getBetNo}}
+                      p 下注时间：{{item.betTime}}
+                      p 彩种：{{item.lotteryName}}
+                      p 下注详情：{{item.betOnValue}}@{{ item.odds }}
+                      p 期号：{{item.gameNo}}
+                      p 下注金额：{{item.amount}}
+                      p 派彩金额：{{item.expectAmount}}
+                      p 输赢金额：{{item.winLoss}}
+                      p 当前开奖结果：{{item.prizeNo ? item.prizeNo : '暂无数据'}}
+                p.endTips(v-if="showEnd") —————————&nbsp&nbsp&nbsp&nbsp&nbsp已经到底了&nbsp&nbsp&nbsp&nbsp&nbsp—————————
+</template>
+<script>
+import noneRecord from './recordGroup/noneRecord'
+import lotteryDialog from './lotteryDialog'
+import { getRecordList } from '../../api/memberCenter'
+import PullTo from 'vue-pull-to'
+import { mapState } from "vuex"
+export default {
+  components:{
+    lotteryDialog,
+    noneRecord,
+    PullTo
+  },
+  computed:{
+    ...mapState({
+      changeLotteryId: state => state.homeData.changeLotteryId, 
+    }),
+    changeLotteryName:{
+      get() {
+          return this.$store.state.homeData.changeLotteryName
+      },
+      set(item) {
+          return item
+      }
+    },
+    dialog:{
+      get() {
+          return this.$store.state.homeData.showSelect
+      },
+      set(item) {
+          return item
+      }
+    }
+  },
+  data(){
+    return{
+      clickBtn:4,
+      headSearch:[
+        {id:0,name:"未结算"},
+        {id:3,name:"已结算"},
+        {id:4,name:"全部"},
+      ],
+      colors:4,
+      isShow: false,
+      page:0,
+      size:15,
+      allData:[],
+      showDetailBox:false,
+      theIndex:"",
+      thisId:'HK_LH',
+      totalPage:0, // 总页数
+      showEnd:false, // 底部提示
+      listColor:false, // 点击列表添加背景颜色
+      isMe:true, // 是否显示全部按钮
+    }
+  },
+  filters:{
+    getBetNo(val){
+      return val.substring(val.length-12)
+    }
+  },
+  mounted(){
+    this.getRecordListData("");
+  },
+  methods:{
+    topRefresh(loaded){  // 上拉刷新
+        this.getRecordListData()
+        loaded('done');
+    },
+    bottomRefresh(loaded){ // 下拉刷新
+        if(this.page < this.totalPage ){
+            this.page++;
+            this.getRecordListData()
+        }
+        loaded('done');
+    },
+    showLotteryLog(){
+      this.$store.state.homeData.showSelect = true;
+    },
+    getRecordListData(val){ // 点击按钮获取列表数据
+      this.colors = val;
+      let data = {
+        lotteryId:this.changeLotteryId,
+        settleStatus:val == 4 ? "" : val,
+        page: this.page,
+        size: this.size,
+      }
+      getRecordList(data).then(res =>{ // 请求接口数据
+        this.allData = [];
+        if (res.data.success == 1) {
+          // if(res.data.content.content.length == 0){
+          //   this.$store.state.homeData.bettingRecord = true;
+          // }
+          this.totalPage = res.data.content.totalPages
+          if (this.page < 2) {
+            this.allData = res.data.content.content;
+          } else {
+            this.allData = this.allData.concat(res.data.content.content);
+          }
+          console.log("111：",this.allData)
+          if (this.page == this.totalPage) {
+            this.showEnd = true;
+          }
+
+        }else{
+          this.$tips.info(res.data.respMsg);
+          return
+        }
+      })
+    },
+    showDetail(index){ // 显示当前数据的详情
+      this.listColor = index;
+      this.theIndex = index;
+      this.showDetailBox = !this.showDetailBox;
+    }
+  }
+}
+</script>
+<style scoped lang="stylus">
+@import '../../assets/stylus/blue.styl'
+  
+
+.clickIn
+  font-size 0.15rem
+  font-weight bold
+  color $font-green-color!important
+.content
+  padding 0.1rem
+  .header-search
+    display flex
+    flex-direction row
+    flex-wrap nowrap
+    flex-wrap wrap
+    .lottery
+      width 1.01rem
+      height 0.3rem
+      line-height 0.3rem
+      text-align center
+      border 0.01rem solid #323748
+      color $font-color
+      background-color $center-back-color
+    .tabBar
+      // width 80%
+      display flex
+      flex-direction row
+      li
+        width 0.71rem
+        height 0.3rem
+        line-height 0.3rem
+        text-align center 
+        border 0.01rem solid #323748
+        background-color $center-back-color
+        color $font-color
+        margin-left 0.12rem
+        &:last-child
+          margin-left 0.17rem
+    .table-head
+      display flex
+      flex-direction row
+      li
+        width 25%
+  .tab-content
+    width 100%
+.addListColor
+  background-color #5b6388
+.pull-contianer
+  overflow auto
+.detail-box
+  background-color #32374a
+  margin auto
+  display flex
+  flex-direction row
+  flex-wrap wrap
+  p
+    text-align left 
+    padding-left 0.15rem
+    width 50%
+    height 0.25rem
+    line-height 0.25rem
+    color #a3aac9
+    position relative
+    span 
+      color #a3aac9!important
+      display inline-block!important
+      font-size 0.12rem!important
+      width 70%!important
+      position absolute 
+      top -0.1rem
+      margin-top 0.1rem
+.allBill
+  // padding-top 0.1rem
+  .table-head
+    display flex
+    flex-direction row
+    height 0.3rem
+    background-color #32374a
+    // line-height 0.3rem
+    span
+      display inline-block
+      width 25%
+      line-height 0.3rem
+      height 0.3rem
+      // border-left 0.01rem solid red 
+      text-align center
+      color #ffffff
+  .table-content
+    // height 6.67rem
+    overflow auto
+    height calc(100vh - 1.4rem) !important
+    ul
+      li
+        display flex
+        flex-direction row
+        border-bottom 0.01rem solid #444b64
+        text-align center
+        line-height 0.57rem
+        flex-wrap wrap
+        flex-grow 2
+        color #191b25
+        span
+          color #ffffff
+          display inline-block
+          width 25%
+          overflow hidden
+          white-space nowrap
+          text-overflow ellipsis
+</style>

@@ -1,0 +1,153 @@
+<template lang="jade">
+  div.content-box
+    noneRecord(v-if="this.$store.state.homeData.bettingRecord == true")
+    .content(v-else)
+      div.header-search
+        .lottery(@click="showLotteryLog")
+          {{changeLotteryName == '' ? '六合彩' : changeLotteryName }}
+        ul.tabBar
+          li(v-for="item,index in headSearch",:key="index",:class="colors == item.id ? 'clickIn' : '' ",@click="getAnotherData(item.id)")
+            {{item.name}}
+      div.tab-content
+        allBill(ref="noBill",:isLog = "login",v-if="selected == 0")
+        allBill(ref="billEnd",:isLog = "login",v-if="selected == 3")
+        allBill(ref="allBill",:isLog = "login",v-if="selected == 4")
+      lotteryDialog(v-if="dialog == true",@isLogFn = "lisLogFn")
+</template>
+<script>
+// import hongKongLottery from './recordGroup/hongKongLottery'
+// import noBill from './recordGroup/noBill'
+// import billEnd from './recordGroup/billEnd'
+import noneRecord from './recordGroup/noneRecord'
+import allBill from './recordGroup/allBill'
+import lotteryDialog from './lotteryDialog'
+import { mapState } from "vuex"
+export default {
+  components:{
+    allBill,
+    lotteryDialog,
+    noneRecord
+  },
+  computed:{
+    ...mapState({
+        // changeLotteryId: state => state.homeData.changeLotteryId, // 一级彩种
+    }),
+    recordLotteryCode:{
+      get() {
+          return this.$store.state.homeData.recordLotteryCode
+      },
+      set(item) {
+          return item
+      }
+    },
+    changeLotteryName:{
+      get() {
+          return this.$store.state.homeData.changeLotteryName
+      },
+      set(item) {
+          return item
+      }
+    },
+    recordLotteryId:{
+      get() {
+          return this.$store.state.homeData.recordLotteryId
+      },
+      set(item) {
+          return item
+      }
+    },
+    dialog:{
+      get() {
+          return this.$store.state.homeData.showSelect
+      },
+      set(item) {
+          return item
+      }
+    }
+  },
+  data(){
+    return{
+      selected:"",
+      headSearch:[
+        {id:"0",name:"未结算"},
+        {id:"3",name:"已结算"},
+        {id:"",name:"全部"},
+      ],
+      colors:"",
+      isShow: false,
+      login:'',
+    }
+  },
+  mounted(){
+    // this.getAnotherData('4')
+  },
+  methods:{
+    showLotteryLog(){
+      this.$store.state.homeData.showSelect = true;
+    },
+    lisLogFn(data){
+      if(data){
+        this.login = data;
+      }
+    },
+    getAnotherData(val){
+      debugger;
+      this.selected = "";
+      this.colors = val;
+      if(val == 0 && this.$refs.noBill){
+        this.$refs.noBill.getRecordListData(val)
+      }
+      if(val == 3 && this.$refs.billEnd){
+        this.$refs.billEnd.getRecordListData(val)
+      }
+      if(val == "" && this.$refs.allBill){
+        this.$refs.allBill.getRecordListData(val)
+      }
+    }
+  }
+}
+</script>
+<style scoped lang="stylus">
+@import '../../assets/stylus/blue.styl'
+.clickIn
+  font-size 0.15rem
+  font-weight bold
+  color $font-green-color!important
+.content
+  padding 0.1rem
+  .header-search
+    display flex
+    flex-direction row
+    flex-wrap nowrap
+    flex-wrap wrap
+    .lottery
+      width 1.01rem
+      height 0.3rem
+      line-height 0.3rem
+      text-align center
+      border 0.01rem solid #323748
+      color $font-color
+      background-color $center-back-color
+    .tabBar
+      // width 80%
+      display flex
+      flex-direction row
+      li
+        width 0.71rem
+        height 0.3rem
+        line-height 0.3rem
+        text-align center 
+        border 0.01rem solid #323748
+        background-color $center-back-color
+        color $font-color
+        margin-left 0.12rem
+        &:last-child
+          margin-left 0.17rem
+    .table-head
+      display flex
+      flex-direction row
+      li
+        width 25%
+  .tab-content
+    width 100%
+</style>

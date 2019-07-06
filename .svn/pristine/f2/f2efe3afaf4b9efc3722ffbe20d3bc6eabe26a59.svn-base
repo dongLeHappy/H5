@@ -1,0 +1,485 @@
+<template lang="jade">
+  .calculation-box
+    .betingDialog(v-if="showBetingDialog == true")
+      .dialogContent
+        .closeDialog 
+          span(@click="closeLoading") 
+            svg-icon.close(icon-class="close_loading")
+        .dialogInfo
+          .attention(v-if="noneMoney == true")
+            span 提示
+            span 请输入金额
+          .errorTip(v-if="errowTips == true")
+            span 提示
+            span {{errorMsg}}
+            p
+              span(@click="closeLoading") 取消
+              span(@click="closeLoading") 确定
+          span(v-if="beting == true") 
+            svg-icon.success(icon-class="success_",v-if="successDialog == true")
+            svg-icon.loading(icon-class="loading_icon",v-if="successDialog == false")
+          span(v-if="beting == true && this.successDialog == false") 投注中
+          span(v-if="beting == true && this.successDialog == true") 投注成功
+    .bets-detail(v-if="changeCalculation == true && betsGroup.length > 0")
+      .bets-head(v-if="carHead == true")
+        p
+          span 已选
+            em {{betsGroup.length}}
+            | 注
+          span
+            svg-icon(@click="close").lottery-icon(icon-class="delete_icon")
+        p
+          span 单注金额：
+            em {{firstMount}}
+          span 总投注额：
+            em {{firstMount * betsGroup.length}}
+          span 预计返还：
+            em {{backMoney.toFixed(2)}}
+      .config-bets(v-if="inputBetingMount == true")
+        span(@click="configBetsMount") 
+          //- input(placeholder="请输入金额",type='number', v-model='firstMount', @focus="disabledKey", :change="getMount(firstMount,betsGroup[0].money)")
+          input(placeholder="请输入金额",type='number', v-model='firstMount', @focus="disabledKey")
+        span(@click="BettingThis(1)") 确认
+      .input-config-bets
+        .bets-num(v-if="keyBorder == true")
+          ul
+            li(v-for="item,index in betsNum",:key="index",@click="chooseNum(item)", v-if="index <= 8 ") {{ item }}
+            li(v-for="item,index in betsNum",:key="index",@click="deleteNum", v-if="index == 9 ")
+              svg-icon(icon-class="left_back")
+            li(v-for="item,index in betsNum",:key="index",@click="chooseNum(item)", v-if="index == 10 ") {{ item }}
+            li(v-for="item,index in betsNum",:key="index",@click="finishInput", v-if="index == 11 ") {{ item }}
+</template>
+<script>
+import { confirmBetting } from '@/api/home/homePage'
+import { mapState } from 'vuex'
+import { Indicator } from 'mint-ui';
+import slide from '@/views/common/slide.vue'
+import { setTimeout } from 'timers';
+export default {
+  data(){
+    return{
+      keyBorder: false,  // 数字键盘
+      backMoney:0, // 预计返还
+      betsMount: [],
+      firstMount: "", //第一次的值
+      left_back:"", // 键盘的删除图标
+      betsNum:["1","2","3","4","5","6","7","8","9","left_back","0","完成"],  // 键盘内的值
+      betsBackMount:'', // 投注返还金额
+      beting:false, // 投注
+      showBetingDialog:false, // loading弹框
+      successDialog:false, // 成功弹框
+      noneMoney:false, // 金额为空弹框
+      errowTips:false, // 后台返回success为2的时候
+      errorMsg:"", // 后台返回的字段
+    }
+  },
+  computed:{
+    ...mapState({
+      firstRuleList: state => state.homeData.thisFirstRule, // 一级玩法
+      secondRule: state => state.homeData.secondRule,
+      balance: state => state.homeData.persenalBalance
+      // changeCalculation: state => state.homeData.changeCalculation,  // 是否显示赔率计算弹框
+    }),
+    betsGroup:{
+      get(){
+        return this.$store.state.homeData.betsGroup;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    changeCalculation:{
+      get(){
+        return this.$store.state.homeData.changeCalculation
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    carHead:{
+      get(){
+        return this.$store.state.homeData.carHead;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+
+    inputBetingMount:{
+      get(){
+        return this.$store.state.homeData.inputBetingMount;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    thisPercentColor:{
+      get(){
+        return this.$store.state.homeData.thisPercentColor;
+      },
+      set(item) {
+        return  item;
+      }
+    }
+  },
+  filters:{
+    getBtesMount(val){  //  获取总投注额
+      console.log(val);
+      let total = 0;
+      for(var i = 0;i < val.length;i++){
+        if(val[i]){
+          total += parseInt(val[i]);
+        }else{
+          total = 0;
+        }
+
+      }
+      return total;
+    },
+    toFixed(val) { // 保留两位小数
+      if(val == '' || !val) {
+        val = 0;
+      }
+      // return Number(val).toFixed(2);
+      return Number(val)
+    }
+  },
+  methods:{ 
+    closeLoading(){  // 关闭loading框
+      this.showBetingDialog = false;
+    },
+    close() { // 关闭下注弹框
+      this.betsGroup.forEach(it => {
+        this.removeSelected(it);
+      });
+      this.$store.state.homeData.changeCalculation = false;
+      this.$store.state.homeData.betsGroup = [];
+      this.firstMount = "";
+    }, 
+    removeSelected(item) { //去掉选中效果
+      let list = item.indexList;
+      let obj = this.firstRuleList[list[0]].playRuleList[list[1]].betTypeList[0];
+      Object.values(obj)[list[2]].isShow = false;
+    },
+    configBetsMount() { // 点击投注金额
+      // this.firstMount = '';
+      this.keyBorder = true; // 数字键盘显示
+    },
+    chooseNum(val) { // 键入数字
+      if(this.firstMount.length >= 9){
+        return
+      }
+      this.firstMount += val;
+      
+    },
+    deleteNum() { // 删除输入框的内容
+      this.firstMount = this.firstMount.substring(0,this.firstMount.length - 1);
+    },
+    finishInput() { // 完成输入
+      if(this.firstMount == '' || this.firstMount == 0){
+        this.$tips.warning("请输入本金")
+        return
+      }
+      this.keyBorder = false; // 数字键盘隐藏
+    },
+    BettingThis() {  // 投注当前
+      this.showBetingDialog = true;
+      this.beting = false
+      setTimeout(()=>{  // 弹窗自动关闭
+        this.showBetingDialog = false;
+      },2000)
+      if(!this.firstMount || this.firstMount == 0){
+        this.noneMoney = true;
+        this.errowTips = false;
+        return
+      }else{
+        this.noneMoney = false;
+        this.beting = true
+      }
+      let betsList = [];
+      this.betsGroup.forEach((it, idx) => {
+        let te = {
+          playRuleId: it.id, // 状态库存的参数
+          betType: it.betOn,
+          odds: it.money,
+          amount: this.firstMount
+        }
+        // if(!!te.amount && te.amount != '0.00'){
+        //   betsList.push(te);
+        // }
+        betsList.push(te);
+      })
+      let data = {
+        lotteryId: this.$route.query.par,
+        betList:betsList
+      }
+      this.betsGroup.forEach(it => {
+        this.removeSelected(it);
+      });
+      confirmBetting(data).then(res => { // 投注请求
+          let par = res.data;
+          if(par.success == 1) {
+            // this.$tips.info(par.respMsg);
+            this.$store.state.homeData.inputBetingMount = false; // 投注弹框关闭
+            this.$store.state.homeData.carHead = false; 
+            this.keyBorder = false;  // 键盘隐藏
+            this.$store.state.homeData.betsGroup = [];
+            this.firstMount = 0;
+            this.backMoney = 0; 
+            this.errowTips = false;
+            this.noneMoney = false;// 隐藏未输入金额
+            this.successDialog = true // 显示成功弹框内容
+          }else{
+            this.noneMoney = false; // 隐藏未输入金额
+            this.beting = false;  // 隐藏loading和success弹框内容
+            this.errowTips = true; // 显示警告提示内容
+            this.errorMsg = par.respMsg; // 提示内容
+            return;
+          }
+      })
+    },
+    loop(){ // 遍历【赔率，拿到key值，赋选中状态的true和false
+      this.thisPercentColor.map((v,k) => {
+          for(let key in v){
+            if(v[key] == true){
+              v[key] = false;
+            }
+          }
+          return v;
+      });
+      this.thisPercentColor.push({})
+      this.$store.state.homeData.thisPercentColor = this.thisPercentColor
+    },
+    disabledKey(){
+      document.activeElement.blur();
+    }
+  },
+  watch:{
+    betsGroup: {
+      handler(val, oldVal) { // 回调函数
+        this.a = val;
+      },
+    },
+    firstMount(newVal,oldVal){
+      if(newVal != oldVal){
+        if(newVal == 0){
+          this.backMoney = 0;
+        }
+        for(var i = 0; i < this.betsGroup.length; i++){
+          if(this.betsGroup[i].money){
+            this.backMoney += this.betsGroup[i].money * newVal;
+          } 
+        }
+      }
+    }
+  },
+}
+</script>
+<style lang="stylus">
+@import '../../assets/stylus/blue.styl'
+  .calculation-box
+    background-color gray
+    position fixed
+    width 100%
+    bottom 0
+    z-index 9999
+    border 0.01rem solid #545a72
+    .bets-detail
+      background-color $main-content-color
+      box-shadow 0.01rem 0 0.5rem 0.01rem #545a72
+      .bets-head
+        display flex
+        flex-direction column
+        flex-wrap nowrap
+        height 0.6rem
+        border-bottom 0.01rem solid #545a72
+        color $font-color!important
+        p
+          width 100%
+          text-align center
+          line-height 0.3rem
+          &:first-child
+            span
+              display inline-block
+              em
+                color $font-green-color
+              &:first-child
+                width 50%
+                text-align left
+                padding-left 0.1rem 
+              &:last-child  
+                width 50%
+                text-align right 
+                padding-right 0.1rem 
+          &:last-child
+            span
+              display inline-block
+              width 33%
+              text-align left
+              padding-left 0.1rem
+              em
+                display inline-block
+                width 0.5rem
+                border 0.01rem solid transparent    
+                // overflow hidden           
+                white-space nowrap
+                text-overflow ellipsis
+                color $font-green-color
+      .config-bets
+        display flex
+        flex-direction row
+        span
+          display inline-block
+          width 50%
+          text-align center
+          line-height 0.5rem
+          color $font-color
+          input
+            width 100%
+            border none
+            font-size 0.14rem
+            line-height 0.45rem
+            border-radius 0
+            padding-left 0.1rem
+            background-color $main-header-color
+            color $font-green-color
+          &:first-child
+            color $lottery-color
+            background-color $main-header-color
+            border-right 0.01rem solid #545a72
+            text-align left
+            display inline-block
+            padding-left 0.1rem
+          &:last-child
+            font-size 0.14rem
+            background-color $font-green-color
+      .input-config-bets
+        .input-bets
+          display flex
+          flex-direction row
+          color $font-color
+          height 0.45rem
+          width 100%
+          p
+            text-align center
+            input
+              width 100%
+              border none
+              font-size 0.14rem
+              line-height 0.45rem
+              border-radius 0
+              padding-left 0.1rem
+              background-color $main-header-color
+              color $font-green-color
+            &:first-child
+              width 60%
+              border-right 0.01rem solid #545a72
+              line-height 0.45rem
+            &:last-child
+              width 40%
+              background-color $beting-back-color
+              color $font-color
+              .startBets
+                display inline-block
+                margin-top 0.04rem
+                font-weight bold
+                font-size 0.14rem
+        .bets-num
+          ul
+            display flex
+            flex-direction row
+            flex-wrap wrap
+            li
+              width 33.3%
+              text-align center
+              line-height 0.45rem
+              background-color $keyboard-back-color
+              border 0.01rem solid #545a72
+              border-bottom none
+              border-left none
+              color $font-color
+.betingDialog
+  width 100%
+  height 100%
+  z-index 9999
+  position fixed
+  background rgba(0,0,0,0.8)
+  left 0
+  top 0
+  filter "Alpha(opacity=60)"
+  opacity 1  
+  .dialogContent
+    width 2.35rem
+    height 2.35rem
+    position absolute
+    top 50%
+    left 50%
+    transform translate(-50%,-50%)
+    text-align center 
+    .closeDialog
+      width 100%
+      text-align center
+      margin-bottom 0.1rem
+      .close 
+        width 0.25rem
+        height 0.25rem
+    .dialogInfo
+      width 100%
+      height 1.5rem
+      background-color #31374d
+      text-align center 
+      line-height 1.2rem
+      display flex
+      flex-direction column
+      .attention
+        
+      .errorTip
+        display flex
+        flex-direction column
+        line-height 0.6rem
+        p
+          margin-top 0.35rem
+          span 
+            display inline-block
+            height 0.27rem
+            width 0.8rem
+            text-align center
+            line-height 0.27rem
+            &:first-child
+              background-color #3b4259
+              margin-right 0.05rem
+              height 0.27rem
+            &:last-child
+              background-color #009b8b
+              margin-left 0.05rem
+              color #fff
+        span
+          text-align center
+          &:first-child
+            height 0.3rem
+          &:last-child
+            color $font-gray-color
+            font-size 0.15rem
+      .splitLine
+        height 0.01rem
+      .success
+        width 0.25rem
+        height 0.25rem
+      .loading
+        width 0.25rem
+        height 0.25rem
+        animation loading 1.5s linear infinite
+      span 
+        display inline-block
+        height 0.2rem
+        color #fff
+        font-size 0.15rem
+  @keyframes loading {
+    0 {
+      transform: rotate(0deg)
+    }
+    100%{
+      transform: rotate(360deg)  
+    }
+  }
+</style>

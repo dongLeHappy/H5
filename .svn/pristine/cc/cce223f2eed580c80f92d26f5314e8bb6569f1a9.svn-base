@@ -1,0 +1,66 @@
+import request from '@/utils/request'
+
+export function homePageData() { // 获取首页初始化数据
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/gameHome',
+        method: 'post'
+    })
+}
+
+export function intervalMainPage() { // 游戏大厅轮询
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/fetchHome',
+        method: 'post'
+    })
+}
+export function getRuleOrPercent(res) { // 获取玩法赔率
+    let data = { lotteryId: res.lotteryId }
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/oddsList',
+        method: 'post',
+        params: data
+    })
+}
+export function getGameResult(res) { // 获取开盘信息
+    let data = { id: res.lotteryId }
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/gameResult',
+        method: 'post',
+        params: data
+    })
+}
+
+export function getFetchGame(res) { // 游戏界面轮询
+    let data = { id: res.id }
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/fetchGame',
+        method: 'post',
+        params: data
+    })
+}
+export function confirmBetting(res) { // 投注
+    let data = {
+        lotteryId: res.lotteryId,
+        betList: res.betList
+    }
+    return request({
+        baseURL: '/api',
+        url: '/cp4/front/h5/betOrder',
+        method: 'post',
+        params: data
+    })
+}
+
+
+export function getServerTime() { // 获取服务器时间
+    return request({
+        baseURL: 'http://192.168.60.237/mock/5cc6ce2214dbf10dc310ff8c/pc',
+        url: '/cp4/opening/opening/findServerTime',
+        method: 'post',
+    })
+}

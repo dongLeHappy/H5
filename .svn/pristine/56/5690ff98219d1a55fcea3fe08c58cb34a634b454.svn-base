@@ -1,0 +1,112 @@
+<template lang="jade">
+  div.noBill
+    ul.bill-head
+      li(v-for="item,index in tableHead",:key="index")
+        {{item.name}}
+    .table-content
+      ul(v-infinite-scroll='loadMore', infinite-scroll-disabled='loading', infinite-scroll-distance='10')
+        li(v-for="item,index in noBill[0]",:key="index") 
+          span {{item.gameNo}}
+          span {{item.govPrizeTime}}
+          span {{item.odds}}
+          span {{item.winloss}} 
+      .loading-box(v-if='loading')
+            mt-spinner.loading-more(type='fading-circle', color='#0188fd')
+      .no-more(v-if='noMore') 亲，已经到底了哦！ 
+</template>
+<script>
+import { mapState } from 'vuex'
+import { Spinner,Button  } from 'mint-ui'
+import { getRecordList } from '../../../api/memberCenter'
+export default {
+  data(){
+    return{
+       tableHead:[
+        {id:"1",name:"注单号"},
+        {id:"2",name:"下注详情"},
+        {id:"3",name:"下注金额"},
+        {id:"4",name:"输赢金额"},
+      ],
+      loading:false,
+      noMore: false,
+      noBill:[],
+      page:1,
+      pagesNum:1,
+      size:10,
+    }
+  },
+  props:[
+    'billId'
+  ],
+  components: {
+      'mt-spinner':Spinner,
+      'mt-button':Button
+  },
+  mounted(){
+    this.getRecordList();
+  },
+  computed:{
+    ...mapState({
+      lotteryId: state => state.homeData.recordLotteryId, // 所有二级彩种
+    })
+  },
+  methods: {
+    getRecordList(){
+      let data = {
+        lotteryId:this.lotteryId,
+        settleStatus:this.billId,
+        page: this.page,
+        size: this.size,
+      }
+      getRecordList(data).then( res =>{
+        console.log("列表：",res);
+        if(res.data.data.success == 1){
+          this.noBill.push(res.data.data.content.content);
+          this.pageNum = res.data.data.content.pageable.totalPages; //总页数	 
+          this.loading = false;   
+        }
+      })
+    },
+    loadMore(){
+        this.page += 1 // 增加分页
+        this.loading = true // 加载中
+        if(this.page <= this.pageNum){
+            //加载数据
+            setTimeout(()=>{
+                this.getRecordList()
+            },2000)
+
+        }
+    }
+  }
+}
+</script>
+<style lang="stylus">
+  .bill-head
+    display flex
+    flex-direction row
+    li{
+      width 25%
+      line-height 0.3rem
+      text-align center
+      border 0.01rem solid gray
+    }
+  .table-content
+    height 6.67rem
+    overflow auto
+    height calc(100vh - 1.4rem) !important
+    ul
+      li
+        display flex
+        flex-direction row
+        border-bottom 0.01rem solid black
+        text-align center
+        line-height 0.35rem
+        flex-wrap wrap
+        flex-grow 2
+        span
+          color gray
+          display inline-block
+          width 25%
+         
+</style>

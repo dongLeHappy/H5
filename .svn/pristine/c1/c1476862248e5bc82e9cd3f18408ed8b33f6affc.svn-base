@@ -1,0 +1,330 @@
+<template lang="jade">
+  // 快乐十分  /  PK10  /  时时彩    / 11选5
+  .templateOne(v-if="showManyLottery()")
+    .single-ball
+      .rule-top-list
+        ul
+          li(v-for="rule,idx in secondRulePercent",:key="idx",@click="getSecondId(rule.id)") {{rule.betOnValue}}
+      .rule-btn-list(v-for="item,index in secondRulePercent[menuIdx].betTypeList",v-if="secondRulePercent.length > 0",:class="changeCalculation == true ? 'needFlow' : ''")
+        ul
+          li(v-for="(val, i, k) in secondRulePercent[menuIdx].betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i", @click="betsMoney(val,i,k)")
+            span
+              b
+                em(:class="changeBall(i)") {{ val.betValue }}
+            span {{closeLottery == true ? '--' : val.odds}}
+    //- 快三
+  .faster-three(v-else)
+    .rule-top-list
+      ul
+        li {{secondRulePercent[0].betOnValue}}
+    .rule-btn-list(v-for="item,index in secondRulePercent",v-if="secondRulePercent.length > 0",:class="changeCalculation == true ? 'needFlow' : ''")
+      ul
+        //- li(v-for="val,i,k in item.betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i",@click="betsMoney(val,i,index)")
+        li(v-for="val,i,k in secondRulePercent[menuIdx].betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i",@click="betsMoney(val,i,k)")
+          span
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'SAN_JUN'")
+              svg-icon.square(:icon-class="changeSquare(val)")
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'TRIPLE' && val.betValue != '全骰'") {{val.betValue == '全骰' ? "全骰" : ""}}
+              svg-icon.square(:icon-class="changeSquare(val)")
+              svg-icon.square(:icon-class="changeSquare(val)")
+              svg-icon.square(:icon-class="changeSquare(val)")
+            span(v-if="secondRule.playRuleList[0].betOn == 'TRIPLE' && val.betValue == '全骰'") {{val.betValue}}
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'SPEC_TWO' || secondRule.playRuleList[0].betOn == 'PAIR' ")
+              svg-icon.square(:icon-class="chengeSquareTweA(val.betValue)")
+              svg-icon.square(:icon-class="chengeSquareTweB(val.betValue)")
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'TOTAL' ") {{ val.betValue }}
+            //- svg-icon.ball(:icon-class="changeBall(val)")
+          span {{closeLottery == true ? '--' : val.odds}}
+</template>
+<script>
+
+import { mapState } from 'vuex'
+export default {
+  props: {
+    // closeLottery: {
+    //   type: Boolean,
+    //   required: true,
+    //   default: true,
+    // },
+    menuInit: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    lotteryRoute:{
+      type: String,
+      required: true,
+    }
+  },
+  data(){
+    return{
+      percentBack:'',
+      betsGroup:{  // 下注列表
+        id:"",
+        rule:"",
+        ruleName:"",
+        money:"",
+        betOn:""
+      },
+      betsList: [], //点中的列表
+      menuIdx: this.menuInit, //二级玩法当前点击的索引
+    }
+  },
+  computed:{
+    ...mapState({
+      secondRule: state => state.homeData.secondRule,
+      secondRulePercent: state => state.homeData.secondRulePercent,
+      betsGroups: state => state.homeData.betsGroup,
+      closeLottery: state => state.homeData.isStop, 
+      changeCalculation: state => state.homeData.changeCalculation, 
+    }),
+  },
+  methods:{
+    showManyLottery(){  // 时时彩  / 快乐10分 // 11选5  // 分分彩 
+      if(this.lotteryRoute == 'SSC_TJ' || this.lotteryRoute == 'SSC_XJ'|| this.lotteryRoute == 'SSC_CQ' || this.lotteryRoute == 'SSC_YN' || this.lotteryRoute == "PKT_BJ" ){
+        return true
+      }
+      if(this.lotteryRoute == 'KLT_GD' || this.lotteryRoute == 'KLT_TJ' || this.lotteryRoute == 'KLT_HuN' || 
+        this.lotteryRoute == 'KLT_SX3' || this.lotteryRoute == 'KLT_YN' || this.lotteryRoute == 'KLT_SX1'){
+          return true
+      }
+      if(this.lotteryRoute == 'EF_HuB' || this.lotteryRoute == 'EF_GD' || this.lotteryRoute == 'EF_AH' || 
+        this.lotteryRoute == 'EF_SH' || this.lotteryRoute == 'EF_JX' || 
+        this.lotteryRoute == 'EF_JS' || this.lotteryRoute == 'EF_SD' || this.lotteryRoute == 'EF_LN'){
+          return true
+      }
+    },
+    changeBall(val){  // 球颜色
+      switch (val) {
+        case "NO_0":
+          return "ball-color ball-color0"
+          break;
+        case "NO_1":
+          return "ball-color ball-color1"
+          break;
+        case "NO_2":
+          return "ball-color ball-color2"
+          break;
+        case "NO_3":
+          return "ball-color ball-color3"
+          break;
+        case "NO_4":
+          return "ball-color ball-color4"
+          break;
+        case "NO_5":
+          return "ball-color ball-color5"
+          break;
+        case "NO_6":
+          return "ball-color ball-color6"
+          break;
+        case "NO_7":
+          return "ball-color ball-color7"
+          break;
+        case "NO_8":
+          return "ball-color ball-color8"
+          break;
+        case "NO_9":
+          return "ball-color ball-color9"
+          break;
+        case "NO_10":
+          return "ball-color ball-color0"
+          break;
+        case "NO_11":
+          return "ball-color ball-color1"
+          break;
+        case "NO_12":
+          return "ball-color ball-color2"
+          break;
+        case "NO_13":
+          return "ball-color ball-color3"
+          break;
+        case "NO_14":
+          return "ball-color ball-color4"
+          break;
+        case "NO_15":
+          return "ball-color ball-color5"
+          break;
+        case "NO_16":
+          return "ball-color ball-color6"
+          break;
+        case "NO_17":
+          return "ball-color ball-color7"
+          break;
+        case "NO_18":
+          return "ball-color ball-color8"
+          break;
+        case "NO_19":
+          return "ball-color ball-color9"
+          break;
+        case "NO_20":
+          return "ball-color ball-color0"
+          break;
+      }
+    },
+    chengeSquareTweA(val){ // 长牌
+      let d = val.split('');
+      let dIndex = d[0];
+      switch (dIndex) {
+        case "1":
+          return 'r_one'
+          break;
+        case "2":
+          return "twe"
+          break;
+        case "3":
+          return "three"
+          break;
+        case "4":
+          return "r_four"
+          break;
+        case "5":
+          return "five"
+          break;
+        case "6":
+          return "six"
+          break;
+      }
+    },
+    chengeSquareTweB(val){ //长牌
+      let d = val.split('');
+      let dIndex = d[1];
+      switch (dIndex) {
+        case "1":
+          return 'r_one'
+          break;
+        case "2":
+          return "twe"
+          break;
+        case "3":
+          return "three"
+          break;
+        case "4":
+          return "r_four"
+          break;
+        case "5":
+          return "five"
+          break;
+        case "6":
+          return "six"
+          break;
+      }
+    },
+    changeSquare(val){  // 三军,围骰,全骰
+      let square = val.betValue;
+      switch (square) {
+        case "1":
+          return 'r_one'
+          break;
+        case "2":
+          return "twe"
+          break;
+        case "3":
+          return "three"
+          break;
+        case "4":
+          return "r_four"
+          break;
+        case "5":
+          return "five"
+          break;
+        case "6":
+          return "six"
+          break;
+        case "111":
+          return 'r_one'
+          break;
+        case "222":
+          return "twe"
+          break;
+        case "333":
+          return "three"
+          break;
+        case "444":
+          return "r_four"
+          break;
+        case "555":
+          return "five"
+          break;
+        case "666":
+          return "six"
+          break;
+        case "全骰":
+          return ""
+          break;
+      }
+    },
+    betsMoney(item,index,k){  // 点击赔率下注
+      if(this.closeLottery == true){
+        return
+      }
+      if(this.$store.state.homeData.changeCalculation == false){
+        this.$store.state.homeData.changeCalculation = true;
+      }
+      this.$store.state.homeData.carHead = true;
+      this.$store.state.homeData.inputBetingMount = true;
+      this.$store.state.homeData.changeCalculation = true; // 购物车的显示隐藏状态存到Store里面
+      this.betsGroup = {
+        id:this.secondRule.playRuleList[0].id,
+        betId:item.id,
+        ruleName:this.secondRule.betOnValue,
+        rule:item.betValue,
+        money:item.odds,
+        betOn:item.betType,
+        betOnValue:this.secondRule.betOnValue,
+        indexList:[this.menuInit, this.menuIdx, k],
+      }
+      if(this.$store.state.homeData.betsGroup.length == 0) {
+        this.betsList = [];
+      }
+      var idx = this.betsList.findIndex(it => {
+        return it.betId == this.betsGroup.betId;
+      })
+      if(idx == -1) {
+        if(this.betsList.length >= 10) {
+          this.$tips.info("最多下注十项");
+          return;
+        }
+        item.isShow = true;
+        this.betsList.push(this.betsGroup);
+      } else {
+        if(this.betsGroups.length == 2){
+          this.$store.state.homeData.changeCalculation = true;
+          this.$store.state.homeData.showMore = false;
+        }
+        item.isShow = false;
+        this.betsList.splice(idx, 1);
+      }
+      this.$store.state.homeData.betsGroup = this.betsList;
+    }
+  },
+  destroyed(){
+    this.$store.state.homeData.betsGroup = [];
+  },
+  watch:{
+    menuInit(newVal, oldVal) { //点击一级玩法时设置二级玩法的索引为0
+      if(newVal != oldVal) {
+        this.menuIdx = 0;
+      }
+    },
+  }
+}
+</script>
+<style lang="stylus">
+  .needFlow
+    width: 100%;
+    overflow: scroll;
+    height: calc(100vh - 3rem) !important;
+  .faster-three
+    .percent
+      // border 0.01rem solid red
+    .square-icon
+      text-align center
+      position relative
+      width 100%
+      .square
+        margin-left 0.02rem
+        text-align center
+        display inline-block
+        height 0.2rem
+        width 30%
+</style>

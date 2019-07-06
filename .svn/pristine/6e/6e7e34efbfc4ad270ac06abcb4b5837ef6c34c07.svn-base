@@ -1,0 +1,819 @@
+<template lang="jade">
+  .calculation-box
+    .bets-detail(v-if="changeCalculation == true")
+      .bets-head(v-if="carHead == true && betsGroup.length > 0")
+        p
+          {{betsGroup[0].betOnValue}}
+        p
+          {{betsGroup[0].rule}}
+        p
+          {{betsGroup[0].money}}
+        p(@click="close")
+          svg-icon.lottery-icon(icon-class="delete_icon")
+      .config-bets(v-if="configBets == true && betsGroup.length > 0")
+        span(@click="configBetsMount") 设定投注额
+        span(@click="BettingThis(1)") 投注
+      .input-config-bets(v-if="inputBtes == true")
+        .input-bets
+          p
+            span.thisMoney 本金：
+            input(type='number', v-model='firstMount', @focus="disabledKey", :change="getMount(firstMount,betsGroup[0].money)")
+          p(@click="BettingThis(firstMount)")
+            span.startBets 投注
+            br
+            span 预期返还{{ betsBackMount | toFixed}}
+        .bets-num
+          ul
+            li(v-for="item,index in betsNum",:key="index",@click="chooseNum(item)", v-if="index <= 8 ") {{ item }}
+            li(v-for="item,index in betsNum",:key="index",@click="deleteNum", v-if="index == 9 ")
+              svg-icon(icon-class="left_back")
+            li(v-for="item,index in betsNum",:key="index",@click="chooseNum(item)", v-if="index == 10 ") {{ item }}
+            li(v-for="item,index in betsNum",:key="index",@click="finishInput", v-if="index == 11 ") {{ item }}
+      .finish-input(v-if="finish")
+        p
+          span 投注额
+          br
+          ￥ {{ firstMount | toFixed }}
+        p(@click="BettingThis")
+          span 投注
+          br
+          span 返还{{ (parseInt(firstMount) * betsGroup[0].money) | toFixed  }}
+
+    .moreBetsDetal(v-if="showMoreList == true")
+      .detal-head(v-if="showEditHead == true && betsGroup.length > 0")
+        p
+          span.number {{betsGroup.length}}
+          span 投注单
+            span.edit(@click="editOrconfirm") {{editOrconfirmBtn}}
+        p
+          span
+            |  余额：{{balance}} RMB
+          span(@click="close_list")
+            svg-icon.lottery-icon(icon-class="delete_icon")
+      div.deleteAll(v-if="editList && betsGroup.length > 0", @click="deleteAllBets") 删除全部
+      .bets-list(v-if="showKey")
+        ul(v-if="betsGroup.length > 0")
+          li(v-for="item,index in betsGroup", :key="index")
+            slide(:index="1" , @deleteItem="deleteItem(item, index)")
+              span.deleteThis(v-if="editList",@click="deleteThisBets(item,index)")
+                svg-icon.lottery-icon(icon-class="delete_icon")
+              span {{ item.betOnValue }}
+              span {{ item.rule }}
+              span {{ item.money }}
+              span.configBox(@click="ConfigBetsMountTwe(index)")
+                input(v-if="isFirst == true",class="wwww", type='number',@focus="disabledKey", @blur="blurfns" placeholder='投注额', v-model="firstMount")
+                input(v-else, type='number',@focus="disabledKey", placeholder='投注额', v-model="betsMount[index]")
+                span.back 返还：
+                  em.backChild(v-if="isFirst == true") {{ (parseInt(firstMount) * item.money) | toFixed }}
+                  em.backChild(v-else) {{ (parseInt(betsMount[index]) * item.money) | toFixed}}
+            .keyBoardBox(v-if="shwKeyBoard && thisKeyBord == index")
+                p.editNum
+                  ul
+                    li(v-for="val,i in editBetsNum",:key="i",@click="chooseNumTwe(val,index)") {{val}}
+                p.editKey
+                  span(@click="removeMount(index)") 删除
+                  span(@click="shwKeyBoard = false,showBack = false") 确定
+        .bettingThisList(v-if="betsThisList")
+          p(@click="BettingThis()") 投注
+            span {{ getTotalBets(1) | toFixed }}RMB
+    .more
+      .more-head(v-if="betsGroup.length > 1 && showMore == true",@click="checkBetsList")
+        p
+          span.number {{betsGroup.length}}
+          span 投注单
+    .betting(v-if="betting")
+      .betting-head
+        p
+          span 已投注
+        p
+          span(@click="finishBetting") 完成
+      .betting-content
+        ul
+          li(v-for="item,index in betsGroup", v-if="isFirst ? firstMount : betsMount[index]", :key="index")
+            span {{item.betOnValue}}
+            span {{item.rule}}
+            span {{item.money}}
+            span.userBets(v-if="singleBet == false")
+              span(v-if="isFirst == true") 本金
+                em {{ firstMount | toFixed }}
+              span(v-else) 本金
+                em {{ betsMount[index] | toFixed }}
+              span(v-if="isFirst == true", ref="backVal") 返还
+                em {{ (parseInt(firstMount) * item.money) | toFixed }}
+              span(v-else) 返还
+                em(ref="backVal") {{ (parseInt(betsMount[index]) * item.money) | toFixed }}
+
+            span(v-if="singleBet == true")
+              svg-icon.successIcon(icon-class="success_")
+
+      .betting-footer
+        p
+          span 投注额
+          br
+          span {{ getTotalBets(1) | toFixed}}
+        p
+          span 预期返还
+          br
+          span {{ getTotalBets(2) | toFixed}}
+</template>
+<script>
+import { confirmBetting } from '@/api/home/homePage'
+import {mapState} from 'vuex'
+import { debug, debuglog } from 'util';
+import slide from '@/views/common/slide.vue'
+export default {
+  data(){
+    return{
+      inputBtes:false,// 点击设置投注额隐藏
+      finish:false, // 点击完成隐藏
+      betsValue:0, // 默认的本金
+      left_back:"", // 键盘的删除图标
+      betsNum:["1","2","3","4","5","6","7","8","9","left_back","0","完成"],  // 键盘内的值
+      editBetsNum:["1","2","3","4","5","6","7","8","9","0"],  // 键盘内的值
+      editList:false, // 修改下注列表
+      betsBackMount:'', // 投注返还金额
+      betting:false, // 下注
+      editOrconfirmBtn:"修改",
+      singleBet:false, // 单条投注样式
+      betsNumber:"",
+      thisHead:true,
+      hiddenList:true,
+      shwKeyBoard:false,
+      betsMount: [],
+      showKey:false,
+      showBack:false,
+      editBtn:false, // 记录是否点击了修改
+      showEditHead:false, // 投注列表的头部
+      betsThisList:false, // 投注列表下面的投注按钮
+      thisKeyBord:false, // 表示点击当前下注列表数据
+      refVal:"", // ref拿到当前点击的投注额
+      betsMountTotal: 0, // 总额
+      thisIndex:"", // 记录当前输入的下标
+      inputVal:[],
+      inportantIndex:"", //。。。。。。。。。
+      firstMount: "", //第一次的值
+      isFirst: true, //是否是第一次
+      principal: [],  // 本金
+      backTotalMoney:"sdfh", // 返还总金额
+
+    }
+  },
+  components: {
+    slide
+  },
+  computed:{
+    ...mapState({
+      firstRuleList: state => state.homeData.thisFirstRule, // 一级玩法
+      secondRule: state => state.homeData.secondRule,
+      balance: state => state.homeData.persenalBalance
+      // changeCalculation: state => state.homeData.changeCalculation,  // 是否显示赔率计算弹框
+    }),
+    betsGroup:{
+      get(){
+        return this.$store.state.homeData.betsGroup;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    changeCalculation:{
+      get(){
+        return this.$store.state.homeData.changeCalculation
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    carHead:{
+      get(){
+        return this.$store.state.homeData.carHead;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+
+    configBets:{
+      get(){
+        return this.$store.state.homeData.configBets;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    showMoreList:{
+      get(){
+        return this.$store.state.homeData.showMoreList;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    showMore:{
+      get(){
+        return this.$store.state.homeData.showMore;
+      },
+      set(item) {
+        return  item;
+      }
+    },
+    thisPercentColor:{
+      get(){
+        return this.$store.state.homeData.thisPercentColor;
+      },
+      set(item) {
+        return  item;
+      }
+    }
+  },
+  filters:{
+    getBtesMount(val){
+      console.log(val);
+      let total = 0;
+      for(var i = 0;i < val.length;i++){
+        if(val[i]){
+          total += parseInt(val[i]);
+        }else{
+          total = 0;
+        }
+
+      }
+      return total;
+    },
+    toFixed(val) {
+      if(val == '' || !val) {
+        val = 0;
+      }
+      return Number(val).toFixed(2);
+    }
+  },
+  methods:{
+    deleteSection(index) {
+      console.log(index);
+    },
+    close() { // 关闭购物弹框
+      this.$store.state.homeData.changeCalculation = false;
+      this.$store.state.homeData.betsGroup = [];
+      this.firstMount = "";
+    },
+    close_list() {
+      if(this.shwKeyBoard == true){
+        this.shwKeyBoard = false;
+      }
+      this.editList = false; // 修改按钮变回默认
+      this.$store.state.homeData.showMoreList = false; // 下注列表隐藏
+      this.$store.state.homeData.showMore = true; // 下注提示栏显示
+    },
+    deleteItem(item, index) { //滑动删除单个注单
+      this.betsGroup.splice(index, 1);
+      this.removeSelected(item);
+    },
+    removeSelected(item) { //去掉选中效果
+      let list = item.indexList;
+      let obj = this.firstRuleList[list[0]].palyRuleList[list[1]].betTypeList[0];
+      Object.values(obj)[list[2]].isShow = false;
+    },
+    configBetsMount() { // 点击投注金额
+      this.$store.state.homeData.configBets = false;
+      this.inputBtes = true; // 键盘显示
+      this.firstMount = '';
+    },
+    chooseNum(val) {
+      this.firstMount += val;
+    },
+    deleteNum() { // 删除输入框的内容
+      this.firstMount = this.firstMount.substring(0,this.firstMount.length - 1)
+    },
+    finishInput() { // 完成输入
+      if(this.firstMount == '' || this.firstMount == 0){
+        this.$tips.warning("请输入本金")
+        return
+      }
+      this.finish = true;
+      this.inputBtes = false;  // 键盘隐藏
+      this.configBets = false;  //单个投注隐藏
+    },
+    bettingSingle(){  // 投注单条注单
+      console.log("投注单条注单")
+      this.singleBet = true;
+    },
+    checkBetsList() { // 查看下注订单列表
+      this.$store.state.homeData.showMore = false; // 注提示栏显示
+      this.$store.state.homeData.showMoreList = true; // 列表显示
+      this.showKey = true;
+      this.betsThisList = true;
+      this.showEditHead = true;
+    },
+    deleteThisBets(item, index) {  // 删除列表数据
+      this.betsGroup.splice(index,1);
+      this.removeSelected(item);
+      console.log(item)
+      if(this.betsGroup.length == 0){
+        this.$store.state.homeData.showMore = false;
+        this.betsGroup = [];
+      }
+      if(this.betsGroup.length == 1){
+        this.$store.state.homeData.showMore = false; // 注提示栏隐藏
+        this.$store.state.homeData.showMoreList = false; // 列表隐藏
+        this.$store.state.homeData.changeCalculation = true;
+      }
+    },
+    getMount(val,odd) {  // 监听输入框的数据
+      this.betsBackMount = val*odd;
+    },
+    BettingThis() {  // // 投注当前下注列表
+      if(this.betsGroup.length == 1){
+        this.singleBet = true;
+      }else{
+        this.singleBet = false;
+      }
+      if(this.isFirst == true){
+        if(!this.firstMount){
+          this.$tips.info("请设定投注额");
+          return
+        }
+      }
+      let betsList = [];
+      this.betsGroup.forEach((it, idx) => {
+        let te = {
+          playRuleId: it.id,
+          betType: it.betOn,
+          odds: it.money,
+          amount: this.$options.filters['toFixed'](this.isFirst ? it.money * this.firstMount : it.money * this.betsMount[idx])
+        }
+        if(!!te.amount && te.amount != '0.00'){
+          betsList.push(te);
+        }
+
+      })
+
+      let data = {
+        lotteryId: this.$route.query.id,
+        betList:JSON.stringify(betsList)
+      }
+      confirmBetting(data).then(res => {
+          let par = res.data.data;
+          if(par.success == 1) {
+            this.betsNumber = par.content[0].num
+          }
+      })
+      this.finish = false;
+      this.betsThisList = false;
+      this.showMoreList = false; // 列表头隐藏
+      this.showKey = false;// 列表隐藏
+      this.betting = true;  // 显示投注完成弹框
+      this.inputBtes = false; // 单条投注键盘关闭
+      this.$store.state.homeData.configBets = false; // 单条投注弹框关闭
+      this.showEditHead = false
+      this.$store.state.homeData.carHead = false;
+    },
+    isShowBetsList() {
+      if(this.firstMount) {
+         return true;
+      }
+      this.betsMount.some(it => {
+        return it != '';
+      })
+    },
+    getTotalBets(num=1) { //1:总投注额, 2:预期返还，3：返还单次金额
+      if(this.isFirst) {
+        let sum = 0;
+        let res = Number(this.firstMount) * this.betsGroup.length;
+        this.betsGroup.forEach(it => {
+          sum += Number(it.money) * Number(this.firstMount);
+        })
+        if(num == 1) {
+          return res;
+        } else {
+          return sum;
+        }
+      } else {
+        let res = 0, sum = 0;
+        this.betsMount.forEach((it, idx) => {
+          if(it == "" || !it) {
+            it = 0;
+          }
+          res += Number(it);
+          sum += Number(it) * Number(this.betsGroup[idx].money);
+        });
+        if(num == 1) {
+          return res;
+        } else {
+          return sum;
+        }
+      }
+    },
+    finishBetting() {  // 完成投注
+      console.log("betsGroup:",this.betsGroup);
+      this.betting = false;
+      this.betsGroup.length = 0;
+      this.configBets = false;
+      this.loop();
+      this.firstMount = "";
+      // this.betsMount = '';
+    },
+    editOrconfirm(){
+      this.editList = !this.editList;
+      if(this.editList == true){
+        this.editOrconfirmBtn = "确定"
+      }else{
+        this.editOrconfirmBtn = "修改"
+      }
+    },
+    deleteAllBets(){ // 删除全部
+      console.log("列表：",this.betsGroup)
+      this.betsGroup.length = 0;
+      if(this.betsGroup.length == 0){
+        this.$store.state.homeData.showMoreList = false; // 列表隐藏
+        // this.$store.state.homeData.thisPercentColor = [];
+        console.log("啥啥：",this.$store.state.homeData.thisPercentColor)
+        for(var j = 0; j < this.$store.state.homeData.thisPercentColor.length;j++){
+          this.$store.state.homeData.thisPercentColor[j] = false;
+        }
+      }
+    },
+    ConfigBetsMountTwe(val){ // 修改投注额 （点击本金输入框）
+      if(this.firstMount){
+
+        this.isFirst = false;
+      }else{
+
+        this.isFirst = true
+      }
+
+      this.inportantIndex = val;
+      this.betsThisList = true;
+      this.thisKeyBord = val;
+      this.shwKeyBoard = true;
+      this.showBack = true;
+    },
+    blurfns(){ //失去焦点事件
+      // this.isFirst = false;
+      this.betsMount.length = this.$store.state.homeData.betsGroup.length;
+      this.betsMount.fill(this.firstMount);
+    },
+    chooseNumTwe(val,index){ // 键入数字键盘
+      if(this.isFirst){
+        this.firstMount = this.firstMount + val
+      }else{
+        this.betsMount[index] = this.betsMount[index] + val;
+        this.$set(this.betsMount,index,this.betsMount[index]);
+      }
+
+      // this.betsMount[index] = parseInt(val);
+      // this.$set(this.betsMount,index,parseInt(val));
+    },
+    removeMount(i){ // 删除键入数字
+        if(this.isFirst == true){
+          this.firstMount = this.firstMount.substring(0,this.firstMount.length - 1);
+        }
+        this.betsMount[i] = this.betsMount[i].substring(0,this.betsMount[i].length - 1);
+        this.$set(this.betsMount,i,this.betsMount[i]);
+    },
+    loop(){ // 遍历【赔率，拿到key值，赋选中状态的true和false
+      this.thisPercentColor.map((v,k) => {
+          for(let key in v){
+            if(v[key] == true){
+              v[key] = false;
+            }
+          }
+          return v;
+      });
+      this.thisPercentColor.push({})
+      this.$store.state.homeData.thisPercentColor = this.thisPercentColor
+    },
+    disabledKey(){
+      document.activeElement.blur();
+    }
+  },
+  watch:{
+    betsGroup: {
+      handler(val, oldVal) { // 回调函数
+        this.a = val;
+      },
+      // deep: true, // 深度监听
+      // immediate: false // 确认是否初始执行handler
+    }
+  },
+}
+</script>
+<style lang="stylus">
+@import '../../assets/stylus/blue.styl'
+  .successIcon
+    display inline-block
+    width 0.25rem!important
+    height 0.25rem!important
+    margin-top 0.18rem
+  .number
+    background-color #009e8b
+    display inline-block
+    width 0.2rem
+    height 0.2rem
+    line-height 0.2rem
+    text-align center
+    border-radius 50%
+    margin-left 0.1rem
+    margin-right 0.1rem
+    margin-top 0.12rem
+  .edit
+    color green
+  .calculation-box
+    background-color gray
+    position fixed
+    width 100%
+    bottom 0
+    z-index 9999
+    border 0.01rem solid #545a72
+    .bets-detail
+      background-color #3a3f53
+      box-shadow 0.01rem 0 0.5rem 0.01rem #545a72
+      .bets-head
+        display flex
+        flex-direction row
+        flex-wrap nowrap
+        height 0.6rem
+        border-bottom 0.01rem solid #545a72
+        color #fefefe!important
+        p
+          width 33%
+          text-align center
+          line-height 0.6rem
+          &:first-child
+            border-left none
+      .config-bets
+        display flex
+        flex-direction row
+        span
+          display inline-block
+          width 50%
+          text-align center
+          line-height 0.5rem
+          color #fefefe
+          &:first-child
+            color #01c8b3
+            background-color #32374a
+            border-right 0.01rem solid #545a72
+          &:last-child
+            background-color #454a60
+      .input-config-bets
+        .input-bets
+          display flex
+          flex-direction row
+          color #fefefe
+          height 0.45rem
+          p
+            width 50%
+            text-align center
+
+            .thisMoney
+              // margin-left -0.8rem
+            input
+              width 1rem
+              border none
+              line-height 0.25rem
+              border-radius 0
+              background-color #32374a
+              color #01c8b3
+            &:first-child
+              border-right 0.01rem solid #545a72
+              line-height 0.45rem
+            &:last-child
+              background-color #009e8b
+              color #fefefe
+              .startBets
+                display inline-block
+                margin-top 0.04rem
+                font-weight bold
+                font-size 0.14rem
+
+        .bets-num
+          ul
+            display flex
+            flex-direction row
+            flex-wrap wrap
+            li
+              width 33.3%
+              text-align center
+              line-height 0.45rem
+              background-color #25293b
+              border 0.01rem solid #545a72
+              border-bottom none
+              border-left none
+              color #fefefe
+      .finish-input
+        display flex
+        flex-direction row
+        flex-wrap wrap
+        color #fefefe
+        height 0.45rem
+        p
+          width 50%
+          text-align center
+          // line-height 0.45rem
+          &:first-child
+            border-right 0.01rem solid #545a72
+            color #01c8b3
+            line-height 0.2rem
+            text-align left
+            padding-left 0.3rem
+            span
+              color #b2b6c8
+          &:last-child
+            padding-top 0.02rem
+            line-height 0.2rem
+            background-color #009b8b
+            span
+              &:first-child
+                font-size 0.14rem
+    .moreBetsDetal
+      .deleteAll
+        background-color #393f55
+        line-height 0.5rem
+        padding-left 0.2rem
+        font-weight bold
+        color #00ccb3
+      .detal-head
+        background-color #444a62
+        box-shadow 0.01rem 0 0.5rem 0.01rem #545a72
+        display flex
+        flex-direction row
+        height 0.45rem
+        color #fefefe
+        p
+          width 50%
+          display flex
+          flex-direction row
+
+          &:first-child
+            span:last-child
+              margin-top 0.08rem
+              span
+                position relative
+                top 0.15rem
+                color #00ccb3
+                left -0.35rem
+          &:last-child
+            position relative
+            span
+              display inline-block
+              width 20%
+              text-align center
+              line-height 0.45rem
+              &:first-child
+                display inline-block
+                width 80%
+
+      .bets-list
+        background-color $bets-bg
+        ul
+          max-height 3rem
+          overflow auto
+          li
+            color #fefefe
+            border-top 1px solid #545a72
+            display flex
+            flex-direction row
+            flex-wrap wrap
+            .deleteThis
+              width 5%
+              position absolute
+            .keyBoardBox
+              width 3.75rem
+              flex-grow 4
+              .editNum
+                ul
+                  display flex
+                  flex-direction row
+                  flex-wrap nowrap
+                  height 0.45rem
+                  li
+                    display inline-block
+                    width 10%
+                    text-align center
+                    line-height 0.45rem
+                    border-left 1px solid #545a72
+                    border-top 1px solid #545a72
+                    &:first-child
+                      border-left none
+              .editKey
+                height 0.45rem
+                display flex
+                flex-direction row
+                border-top 1px solid #545a72
+                span
+                  width 50%
+                  line-height 0.45rem
+                  text-align center
+            span
+              display inline-block
+              text-align center
+              height 0.6rem
+              width 0.8rem
+              line-height 0.6rem
+              &:first-child
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+            .configBox
+              line-height 0
+              height 0.6rem
+              width 1.32rem
+              border-left 0.01rem solid #545a72
+              .back
+                width 100%
+                display inline-block
+                height 0.3rem
+                line-height 0.3rem
+                color #c8cddf
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+                background $bets-bg
+                .backChild
+                  color #01c8b3
+              input
+                width 100%
+                height .3rem
+                line-height 0.3rem
+                text-align center
+                border none
+                border-radius 0
+                background-color #32374a
+                color #01c8b3
+        .bettingThisList
+          background-color #009e8b
+          line-height 0.45rem
+          text-align center
+          color #fefefe
+          span
+            margin-left 0.3rem
+    .more-head
+      background-color #444a62
+      box-shadow 0.01rem 0 0.5rem 0.01rem #545a72
+      height 0.45rem
+      line-height 0.45rem
+      color #fefefe
+    .betting
+      .betting-head
+        background-color #009e8b
+        display flex
+        flex-direction row
+        height 0.45rem
+        p
+          width 50%
+          line-height 0.45rem
+          padding-left 0.23rem
+          &:first-child
+            span:first-child
+              color #fefefe
+          &:last-child
+            line-height 0.45rem
+            text-align right
+            padding-right 0.2rem
+            font-weight bold
+            font-size 0.14rem
+      .betting-content
+        background-color #393f55
+        max-height 3rem
+        overflow auto
+        ul
+          li
+            display flex
+            flex-direction row
+            text-align center
+            height 0.6rem
+            color #fefefe
+            line-height 0.6rem
+            border-bottom 0.01rem solid #545a72
+            span
+              display inline-block
+              width 25%
+
+            .userBets
+              line-height 0.3rem
+              span
+                  color #c8cddf
+                  line-height 0.2rem
+                  display inline-block
+                  width 100%
+                  text-align left
+                  height 0.2rem
+                  em
+                    color #01c8b3
+      .betting-footer
+        background-color #393f55
+        display flex
+        flex-direction row
+        color #fefefe
+        height 0.6rem
+        p
+          text-align center
+          width 50%
+          height 0.6rem
+          padding-left 0.25rem
+          line-height 0.25rem
+          span
+            &:last-child
+              color #fefefe
+              font-weight bold
+</style>

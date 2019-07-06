@@ -1,0 +1,154 @@
+<template lang="jade">
+  div.pankou-info 
+    .lotter-head
+      p.lotteryLog(@click="arrowLottery") 
+        span {{ changeLotteryName }} 
+        svg-icon.iconStyle(icon-class="aroows-btm")
+    div.pankou-table
+      ul
+        li(v-for="item in pankouList",:key="item.id")
+          span{{item.listName}}
+    div.table-content
+      ul
+        li(v-for="item in pankouTableData",:key="item.id")
+          span{{item.betOnValue}}
+          span{{item.singleMax}}
+          span{{item.singleMin}}
+          span{{item.gameNoMax}}
+    lotteryDialog(v-if="dialog == true",@changeInfoData="getPanKouInfoData")
+
+</template>
+<script>
+import lotteryDialog from './lotteryDialog'
+import { mapState } from 'vuex'
+import PullTo from 'vue-pull-to'
+import { getPanKouInfo } from '../../api/memberCenter'
+export default {
+  data(){
+    return{
+      pankouList:[
+        {id:1,listName:"类型名称"},
+        {id:2,listName:"单注最低"},
+        {id:3,listName:"单注最高"},
+        {id:4,listName:"单项最高"},
+      ],
+      pankouTableData:[],
+      showSelect:false,
+      subGames: [], // 当前二级彩种
+      active: false,
+      page:1,
+      size:10,
+      thisParams:"",
+    }
+  },
+  components:{
+    lotteryDialog,
+    PullTo
+  },
+  computed:{
+    ...mapState({
+        changeLotteryId:state => state.homeData.changeLotteryId
+    }),
+    dialog:{
+      get() {
+          return this.$store.state.homeData.showSelect
+      },
+      set(item) {
+          return item
+      }
+    },
+    changeLotteryName:{
+      get() {
+          return this.$store.state.homeData.changeLotteryName
+      },
+      set(item) {
+          return item
+      }
+    },
+  },
+  mounted(){
+    this.getPanKouInfoData(this.changeLotteryId)
+  },
+  methods:{
+    
+    getPanKouInfoData(val){
+      this.thisParams = val;
+      let data ={
+        lotteryId:val == "" ? changeLotteryId : val,
+        page:this.page,
+        size:this.size
+      }
+      getPanKouInfo(data).then( res => {
+        this.pankouTableData = res.data.data.content;
+      })
+    },
+    arrowLottery(){
+      this.$store.state.homeData.showSelect = true;
+    },
+    getSubGame(id,name){ // 一级玩法获取以及点击切换
+        this.subGames = [];
+        this.active = id;
+        if(id == 'all') {
+            this.subGames = this.allSecondLottery
+        } else {
+            for(let i = 0;i < this.secondLotteryArr.length;i++){
+                if( i == id){
+                    this.subGames = [];
+                    this.subGames = this.secondLotteryArr[i];
+                }
+            }
+        }
+    },
+    changeParentLottery(id,name){ // 切换彩种列表
+        this.showSelect = false;
+        this.lotteryId = id;
+    },
+  }
+}
+</script>
+<style lang="stylus">
+.pankou-info
+  background-color #42475d
+  padding 0.1rem 0.1rem 0
+  .lotter-head
+    p
+        width 1.11rem
+        text-align center
+        background-color #4e5573
+        line-height 0.28rem
+        margin 0 auto
+        color #ffffff
+        span 
+            margin-right 0.1rem
+  .pankou-table
+    ul 
+      display flex
+      flex-direction row
+      li
+        width 25%
+        text-align center
+        line-height 0.35rem
+        border-bottom 0.01rem solid #545a72
+        border-top 0.01rem solid #545a72
+        margin-top 0.1rem
+        span 
+          display inline-block
+          color #ffffff
+  .table-content 
+    height 5.35rem
+    overflow auto 
+    z-index 1
+    ul
+      li
+        display flex
+        flex-direction row
+        span 
+          display inline-block
+          border-bottom 0.01rem solid #545a72
+          width 25%
+          line-height 0.3rem
+          text-align center
+          color #ffffff
+               
+          
+</style>

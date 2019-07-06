@@ -1,0 +1,120 @@
+<template lang="jade">
+    .header
+        div(class="ts-menu")
+            div.m-icon-left
+                svg-icon(icon-class="arrows-left" , @click="backHome")
+            div.company-name
+                svg-icon.logo-icon(icon-class="logo", @click="linkHome")
+            div.my-bet(@click="myBetsList") {{ myBet }}
+            router-link.persenal(:to="{name:'memberCenter'}")
+                div.m-icon-right
+                    div.m-svg-icon
+                        svg-icon(icon-class="wode_icon")
+                    div.m-balance {{balance}}
+
+
+        
+</template>
+<script>
+import { getToken } from '@/utils/auth' // getToken from cookie
+import { mapState } from 'vuex'
+import { setTimeout } from 'timers';
+export default {
+    name: "Index",
+    props:[
+        'menuIcon'
+    ],
+    data() {
+        return {
+            myBet: '我的投注',
+            routerPath:'',
+            
+        }
+    },
+    computed:{
+        ...mapState({
+            balance: state => state.homeData.persenalBalance
+        })
+    },
+    mounted(){
+        this.routerPath = this.$route.fullPath
+    },
+    methods: {
+        
+        backHome() {
+          this.$router.go(-1);
+        },
+        myBetsList() {
+          this.$router.push('/betsRecord');
+        },
+        linkHome() {
+          this.$router.push('/');
+        }
+    }
+};
+</script>
+
+<style scoped lang="stylus">
+@import "../../assets/stylus/blue";
+
+.header
+    z-index 99
+    position fixed
+    width 100%
+    text-align center
+    line-height 0.44rem
+    height 0.44rem
+    background-color $main-header-color
+    color $font-color
+    .logo-icon
+        width 0.73rem
+        height 0.225rem
+        margin-top 0.13rem
+    .ts-menu  // 头部
+        text-align center
+        width 100%
+        display flex
+        flex-wrap wrap
+        height auto
+    .m-icon-left   // 返回按钮
+        font-size 0.2rem
+        width 10%
+    .company-name   // 名称
+        width 57%
+        padding-left 0.65rem
+    .my-bet
+        width 18%   // 我的投注
+        text-align center
+        // width: 0.485rem;
+        height 0.115rem
+        font-family PingFang-SC-Regular
+        font-size 0.12rem
+        font-weight normal
+        font-stretch: normal
+        letter-spacing: 0rem
+        color $font-color
+    .persenal
+        width 0.47rem
+	    height 0.305rem
+        display inline-block
+        color $font-color
+    .m-icon-right   // 个人中心
+        font-size 0.2rem
+        margin-top -0.02rem
+    .m-svg-icon  // 个人中心图标
+        line-height 0.2rem
+        margin-top 0.07rem
+        .svg-icon
+            width 0.18rem
+            height 0.18rem
+    .m-balance
+        width 0.47rem
+        height 0.085rem
+        font-family ArialMT
+        font-size 0.11rem
+        font-weight normal
+        font-stretch normal
+        line-height 0.17rem
+        letter-spacing 0rem
+        color $font-green-color
+</style>

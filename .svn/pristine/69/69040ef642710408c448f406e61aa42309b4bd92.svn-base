@@ -1,0 +1,604 @@
+<template lang="jade">
+  div.liuHe
+    .gameNoDialog(v-if="showGameNo == true")
+      .infoList
+          span 期数变更提示
+          p
+              p 当前彩种：{{nextOpenNum}}
+              p 当前期数：{{nextOpenNum}}
+    .rule-head
+      .lottery-name
+        p
+          svg-icon.lotteryIcon(:icon-class="showLotteryLogo()")
+      .lottery-info
+        .ballBox
+          p【第{{lastDate}}期】:
+          //- .ball(v-if="lotteryRouteId == 'HK_LH'",v-for="item,index in openBallNum",:key="index")
+            // 香港彩 
+          .ball-arr1(v-if="lotteryRouteId == 'HK_LH'")
+            span.ballColor(v-for="item,index in openBallNum",:key="index",v-if="index <= 4",:class="item.color == 'BLUE' ? 'blue' :item.color == 'RED' ? 'red' :'green'") {{item.ballValue}}
+            span.addIcon(v-for="val,idx in openBallNum",:key="idx",v-if="idx == 5") +
+            span.ballColor(v-for="row,i in openBallNum",:key="i",v-if="i == 6",:class="row.color == 'BLUE' ? 'blue' :row.color == 'RED' ? 'red' :'green'") {{row.ballValue}}
+            //- span.ballColor(v-for="item,i in openBallNum",:key="i",v-if="i == 5") +
+              //- span.ballColor(:class="changeBall(openBallNum[0].ballValue ? openBallNum[0].ballValue : '')") {{openBallNum[0].ballValue ? openBallNum[0].ballValue : '' }} 
+              //- span.ballColor(:class="changeBall(openBallNum[1].ballValue ? openBallNum[1].ballValue : '')") {{openBallNum[1].ballValue ? openBallNum[1].ballValue : '' }} 
+              //- span.ballColor(:class="changeBall(openBallNum[2].ballValue ? openBallNum[2].ballValue : '')") {{openBallNum[2].ballValue ? openBallNum[2].ballValue : '' }} 
+              //- span.ballColor(:class="changeBall(openBallNum[3].ballValue ? openBallNum[3].ballValue : '')") {{openBallNum[3].ballValue ? openBallNum[3].ballValue : '' }} 
+              //- span.ballColor(:class="changeBall(openBallNum[4].ballValue ? openBallNum[4].ballValue : '')") {{openBallNum[4].ballValue ? openBallNum[4].ballValue : '' }}
+              //- span.ballColor(:class="changeBall(openBallNum[5].ballValue ? openBallNum[5].ballValue : '')") {{openBallNum[5].ballValue ? openBallNum[5].ballValue : '' }} 
+              //- span.addIcon +
+              //- span.ballColor(:class="changeBall(openBallNum[6].ballValue ? openBallNum[6].ballValue : '')") {{openBallNum[6].ballValue ? openBallNum[6].ballValue : '' }} 
+          // 快三
+          .ball-arr(v-else-if="fasterTable()")
+              //- span.squareArr
+              svg-icon.square(v-for="val,i in openBallNum",:key="i",:icon-class="chengeSquareTweA(val.ballValue) ? chengeSquareTweA(val.ballValue) : val.ballType ")
+          // pk10
+          .ball-arrPk(v-else-if="lotteryRouteId == 'PKT_BJ'")  
+              span.ballColor(v-for="val,i in openBallNum",:key="i",:class="changeBall(val.ballValue)") {{val.ballValue}}
+
+          // 快乐十分
+          .ball-arr(v-else-if="happyTen()")  
+              span.ballColor(v-for="val,i in openBallNum",:key="i",:class="changeBall(val.ballValue)") {{val.ballValue}}
+
+          // 11选5 / 时时彩   
+          .ball-arr(v-else)
+              span.ballColor(v-for="val,i in openBallNum",:key="i",:class="changeBall(val.ballValue)") {{val.ballValue}}
+            //- span(:class="changeBall(item.ballValue)") {{item.ballValue}}
+        p &nbsp;&nbsp;距【{{nextOpenNum}}】期截至投注时间:
+        p.timeColor(v-if="isStop==false") &nbsp;
+          span
+            em {{countDownSS == '' ? 0 : countDownSS}}
+            | 分
+            em {{countDownMM == '' ? 0 : countDownMM}}
+            | 秒
+        div.timeColor(v-if="isStop==true")
+          p  {{ countDownTime }}
+    .rule-content
+      .rule-left-list
+        ul
+          li(v-for="item,index in firstRuleList",:key="index",@click="chengePlayRule(index,item)", :class="activeClass == index ? 'active' : ''")
+            {{item.betOnValue}}
+      .rule-content-list
+        // 香港彩
+        hongKong(v-if="lotteryRouteId == 'HK_LH'", :menuInit="secondIdx", :closeLottery="isStop")
+        //时时彩  / 快乐10分 // 11选5 // 北京PK10   // 快三
+        moreLottery(v-if="showLottery() && isGetPlayRlue == true", :closeLottery="isStop", :menuInit="secondIdx",:lotteryRoute = "lotteryRouteId")
+    calculation
+</template>
+<script>
+import { mapState } from 'vuex'
+import calculation from './betsCalculation'
+import moreLottery from './lotteryTemplate_I'
+import hongKong from './lotteryTemplate_III'
+import { setInterval, clearInterval } from 'timers';
+import { getFetchGame,getGameResult } from '../../api/home/homePage'
+export default {
+  components:{
+    moreLottery,
+    calculation,
+    hongKong
+  },
+  data(){
+    return{
+      activeClass:0, // 点击给当前调价背景颜色
+      activeClass1:false, // 点击给当前调价背景颜色
+      isGetPlayRlue: false, // 判断是否已经执行
+      lotteryRouteId:"", // 路由传过来的当前二级彩种ID
+      showLotteryContent:false,
+      countTime: null , // 倒计时差
+      countDownTime: [], // 倒计时
+      countDownDD: null, // 倒计时天
+      countDownHH: null, // 倒计时小时
+      countDownSS: null, // 倒计时分
+      countDownMM: null, // 倒计时秒
+      isStop: false, // 是否封盘
+      secondIdx: 0, //六合彩传给二级玩法的索引
+      routePar:"", // 路由带过来的开盘信息参数
+      lastDate:"", // 期号
+      stopOpenTime:"", // 开盘截止时间
+      nextOpenNum:"", // 下期开奖期号
+      openBallNum:[],// 开奖号码
+      betingId:"", // 投注时传的二级玩法ID
+      isDisable:false,  // 是否封盘
+      showGameNo:false,
+    }
+  },
+  computed:{
+    ...mapState({
+      firstRuleList: state => state.homeData.thisFirstRule, // 一级玩法
+      changeCalculation: state => state.homeData.changeCalculation,  // 是否显示赔率计算弹框
+    }),
+    serverOpenTime:{ // 服务器时间
+      get() {
+          return this.$store.state.homeData.serverOpenTime;
+      },
+      set(item) {
+          return item
+      }
+    }
+  },
+  created(){
+    this.lotteryRouteId =  this.$route.query.id;
+    this.routePar = this.$route.query.par;
+  },
+  mounted(){
+    this.getOpeningInfo(); // 获取开盘信息
+    this.chengePlayRule(this.activeClass,this.firstRuleList[0]); // 选择一级玩法
+    this.getDefaultOdds(); // 默认显示一级玩法
+    this.countDown(); // 开始倒计时
+    this.getOpenDataFetch(); // 开始开盘信息轮询
+    
+  },
+  destroyed(){
+    clearInterval(this.countDown); // 停止倒计时
+    clearInterval(this.getOpenDataFetch); // 停止轮询
+  },
+  methods:{
+    getDefaultOdds() { //  默认显示
+      this.firstRuleList.forEach((v,k) => {
+        if(k == 0) {
+          this.$store.state.homeData.ballAndPercent = v.playRuleList;
+          this.isGetPlayRlue = true;
+        }
+      });
+    },
+    showLottery() { // 选择显示的模板
+      // 时时彩
+      if(this.lotteryRouteId == 'SSC_TJ' || this.lotteryRouteId == 'SSC_XJ'|| this.lotteryRouteId == 'SSC_CQ' || 
+        this.lotteryRouteId == 'SSC_YN' || this.lotteryRouteId == 'PKT_BJ' ){
+          return true
+      }
+        // 快乐十分
+      if(this.lotteryRouteId == 'KLT_GD' || this.lotteryRouteId == 'KLT_TJ' || this.lotteryRouteId == 'KLT_HuN' || 
+        this.lotteryRouteId == 'KLT_SX3' || this.lotteryRouteId == 'KLT_YN' || this.lotteryRouteId == 'KLT_SX1'){
+          return true
+      }
+        // 11选5
+      if(this.lotteryRouteId == 'EF_HuB' || this.lotteryRouteId == 'EF_GD' || this.lotteryRouteId == 'EF_AH' || 
+        this.lotteryRouteId == 'EF_SH' || this.lotteryRouteId == 'EF_JX' || 
+        this.lotteryRouteId == 'EF_JS' || this.lotteryRouteId == 'EF_SD' || this.lotteryRouteId == 'EF_LN'){
+          return true
+      }
+      //  快三
+      if(this.lotteryRouteId == 'FT_HuB' || this.lotteryRouteId == 'FT_GX' || this.lotteryRouteId == 'FT_AH' || 
+        this.lotteryRouteId == 'FT_JL'|| this.lotteryRouteId == 'FT_JX'|| this.lotteryRouteId == 'FT_JS'|| 
+        this.lotteryRouteId == 'FT_FJ'|| this.lotteryRouteId == 'FT_BJ'){
+          return true
+      }
+    },
+    getOpeningInfo() {  //  获取游戏界面开盘信息
+      getGameResult({lotteryId:this.routePar}).then((res) => {  // 获取开盘信息
+          let a = res.data;
+          if(a.success == 1){
+              let par = a.content;
+              console.log("开盘信息：",par.serverTime)
+              this.serverTime = par.serverTime;
+              this.endTime = par.currentOpening.endTime;
+              this.$store.state.homeData.serverOpenTime = this.serverTime;   // 服务器时间 
+              this.lastDate = par.lastPrize.gameNo; // 当前期号
+              this.openBallNum = par.lastPrize.prizeResult;  // 最新一期球号
+              this.nextOpenNum = par.nextOpening.gameNo; // 下期期号
+              this.stopOpenTime = par.currentOpening.endTime;
+              this.isDisable = par.currentOpening.disable;
+              // 获取时间
+              let server = Date.parse(this.serverTime); // 服务器时间
+              let endTime = Date.parse(this.stopOpenTime); // 截止开盘时间
+              let useTime = endTime - server; // 取到倒计时时间
+
+              if(this.isDisable == true ){
+                this.countDownTime = '已关盘'
+              }else{
+                this.countDownTime = this.getCountDown(useTime); // 最后得到
+              }
+          }
+      })
+    }, 
+    chengePlayRule(id,list) {  // 选择一级玩法
+      this.secondIdx = id;
+      this.activeClass = id;
+      this.$store.state.homeData.secondRule = list;
+      if(list){
+        this.$store.state.homeData.secondRulePercent = list.playRuleList;
+        console.log("一级玩法：",list)
+      }
+
+    },
+    getCountDown(endTime,isDisable) { // 通过服务器时间与下期开奖时间获取倒计时
+      let days = parseInt(endTime / (1000 * 60 * 60 * 24)), // 天
+          hours = parseInt((endTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),  // 小时
+          minutes = parseInt((endTime % (1000 * 60 * 60)) / (1000 * 60)),  // 转分钟
+          seconds = (endTime % (1000 * 60)) / 1000;  // 秒
+      if(days <= 9) {
+          days = "0" + days
+      }
+      if(hours <= 9) {
+          hours = "0" + hours
+      }
+      if(minutes <= 9) {
+          minutes = "0" + minutes
+      }
+      if(seconds<=9) {
+          seconds = "0" + seconds
+      }
+      this.countDownDD = days
+      this.countDownHH = hours
+      this.countDownSS = minutes
+      this.countDownMM = seconds
+
+      if(endTime >= 86400000) {
+          return [days,hours,minutes,seconds];
+      }
+      if(endTime >= 3600000) {
+          return [hours,minutes,seconds];
+      }
+      if(endTime >= 60000) {
+          return [minutes,seconds];
+      }
+      if(endTime < 0 && isDisable == true){
+          this.isStop = true
+          return '已关盘';
+      }else{
+          return [days,hours,minutes,seconds];
+      }
+    },
+    countDown() {  // 倒计时定时器
+      this.countDown = setInterval(() => {
+          if(this.countDownTime.length <= 0) { // 如果不是时间格式
+              return
+          }
+          let arr = this.countDownTime,
+              ss = parseInt(arr[arr.length - 1] * 1000), // 秒
+              mm = parseInt(arr[arr.length - 2] * 60 * 1000), // 分
+              hh = parseInt(arr[arr.length - 3] * 60 * 60 * 1000), // 时
+              dd = parseInt(arr[arr.length - 4] * 60  * 60 * 24 * 1000), // 天
+              alltime = 0;
+              if(arr.length == 4){
+                  alltime = ss + mm + hh + dd
+              }
+              if(arr.length == 3){
+                  alltime = ss + mm + hh
+              }
+              if(arr.length == 2){
+                  alltime = ss + mm
+              }
+              if(arr.length == 1){
+                  alltime = ss
+              }
+              alltime -= 1000
+              if(alltime > 0){
+                  this.countDownTime = alltime
+                  this.countDownTime = this.getCountDown(this.countDownTime)
+              }else{
+                  this.isStop = true // 是否封盘
+                  this.countDownTime = '已关盘';
+                  clearInterval(this.countDown)
+              }
+      }, 1000)
+    },
+    getOpenDataFetch() { // 游戏界面轮询
+     
+      this.getOpenDataFetch = setInterval( () => {
+          getFetchGame({id:this.routePar}).then( res => {
+              let par = res.data;
+              if(par.success == 1){
+                
+                if(this.nextOpenNum && this.nextOpenNum != par.content.nextOpening.gameNo){
+                  alert("请注意，期号变更")
+                  this.showGameNo = true;
+                  setTimeout(()=>{
+                      this.showGameNo = false;
+                  },3000)
+                }
+                let content = par.content;
+                
+                console.log("服务器时间2：",content.serverTime)
+                this.stopOpenTime = content.nextOpening.endTime; // 开盘截止时间
+                this.openBallNum = content.lastPrize.prizeResult;  // 最新一期球号
+                this.lastDate = content.lastPrize.gameNo; // 当前期号
+                this.nextOpenNum = content.nextOpening.gameNo; // 下期期号
+                this.serverTime = content.serverTime;
+                this.isDisable = content.currentOpening.disable;
+                // 获取时间
+                let server = Date.parse(this.serverTime); // 服务器时间
+                let endTime = Date.parse(this.stopOpenTime); // 截止开盘时间
+                let useTime = endTime - server; // 取到倒计时时间
+
+                if(this.isDisable == true ){
+                  this.countDownTime = '已关盘'
+                }else{
+                  this.countDownTime = this.getCountDown(useTime); // 最后得到
+                }
+              }
+          })
+      },3000)
+    },
+    showLotteryLogo() {  // 显示彩种LOGO
+      switch (this.lotteryRouteId) {
+        case 'HK_LH':
+            return "lhc_icon"
+            break;
+        case 'SSC_TJ':
+            return "tj_ssc"
+            break;
+        case 'SSC_XJ':
+            return "xj_ssc"
+            break;
+        case 'SSC_CQ':
+            return "cq_ssc"
+            break;
+        case 'SSC_YN':
+            return "yn_ssc"
+            break;
+        case 'KLT_GD':
+            return "gd_klsf"
+            break;
+        case 'KLT_TJ':
+            return "tj_klsf"
+            break;
+        case 'KLT_HuN':
+            return "hn_klsf"
+            break;
+        case 'KLT_SX3':
+            return "sx_klsf"
+            break;
+        case 'KLT_YN':
+            return "yn_klsf"
+            break;
+        case 'KLT_SX1':
+            return "shx_klsf"
+            break;
+        case 'EF_HuB':
+            return "hb11_icon"
+            break;
+        case 'EF_GD':
+            return "gd_icon"
+            break;
+        case 'EF_AH':
+            return "ah_icon"
+            break;
+        case 'EF_SH':
+            return "sh11_icon"
+            break;
+        case 'EF_JX':
+            return "jx11_icon"
+            break;
+        case 'EF_JS':
+            return "js11_icon"
+            break;
+        case 'EF_SD':
+            return "sd11_icon"
+            break;
+        case 'EF_LN':
+            return "ln11_icon"
+            break;
+        case 'FT_HuB':
+            return "hb_k3"
+            break;
+        case 'FT_GX':
+            return "gx_k3"
+            break;
+        case 'FT_AH':
+            return "ah_k3"
+            break;
+        case 'FT_JL':
+            return "jl_k3"
+            break;
+        case 'FT_JX':
+            return "jx_k3"
+            break;
+        case 'FT_JS':
+            return "js_k3"
+            break;
+        case 'FT_FJ':
+            return "fj_k3"
+            break;
+        case 'FT_BJ':
+            return "bj_k3"
+            break;
+        case 'PKT_BJ':
+            return "PK10_icon"
+            break;
+
+      }
+    },
+    ballSwitch(val){  // 球号颜色
+      switch (val) {
+          case "0":
+          return "ball-color ball-color0"
+          break;
+          case "1":
+          return "ball-color ball-color1"
+          break;
+          case "2":
+          return "ball-color ball-color2"
+          break;
+          case "3":
+          return "ball-color ball-color3"
+          break;
+          case "4":
+          return "ball-color ball-color4"
+          break;
+          case "5":
+          return "ball-color ball-color5"
+          break;
+          case "6":
+          return "ball-color ball-color6"
+          break;
+          case "7":
+          return "ball-color ball-color7"
+          break;
+          case "8":
+          return "ball-color ball-color8"
+          break;
+          case "9":
+          return "ball-color ball-color9"
+          break;
+      }
+    },
+    changeBall(val){ //  选择球号颜色
+      let a = val.split('');
+      let b = a[a.length-1]
+      // 快三骰子
+      if(this.lotteryCode == 'FT_HuB' || this.lotteryCode == 'FT_GX' || this.lotteryCode == 'FT_AH' || this.lotteryCode == 'FT_JL' || 
+          this.lotteryCode == 'FT_JX' || this.lotteryCode == 'FT_JS' || this.lotteryCode == 'FT_FJ' || this.lotteryCode == 'FT_BJ'){
+          switch (b) {
+              case "1":
+              return "r_one"
+              break;
+              case "2":
+              return "twe"
+              break;
+              case "3":
+              return "three"
+              break;
+              case "4":
+              return "r_four"
+              break;
+              case "5":
+              return "five"
+              break;
+              case "6":
+              return "six"
+              break;
+          }
+      }else{
+          return this.ballSwitch(b)
+      }
+    },
+    fasterTable(){ // 快三判断
+        if(this.lotteryRouteId == 'FT_HuB' || this.lotteryRouteId == 'FT_GX' || this.lotteryRouteId == 'FT_AH' || this.lotteryRouteId == 'FT_JL' || 
+        this.lotteryRouteId == 'FT_JX' || this.lotteryRouteId == 'FT_JS' || this.lotteryRouteId == 'FT_FJ' || this.lotteryRouteId == 'FT_BJ'){
+            return true
+        }
+    },
+    happyTen(){ // 快乐十分
+        if(this.lotteryCode == 'KLT_GD' || this.lotteryCode == 'KLT_TJ' || this.lotteryCode == 'KLT_HuN' || this.lotteryCode == 'KLT_SX3' || 
+        this.lotteryCode == 'KLT_YN' || this.lotteryCode == 'KLT_SX1'){
+            return true;
+        }
+    },
+    chengeSquareTweA(val){ // 快3骰子
+        if(val){
+            switch (val) {
+                case "1":
+                return 'r_one'
+                break;
+                case "2":
+                return "twe"
+                break;
+                case "3":
+                return "three"
+                break;
+                case "4":
+                return "r_four"
+                break;
+                case "5":
+                return "five"
+                break;
+                case "6":
+                return "six"
+                break;
+            }
+        }
+    },
+    
+  }
+}
+</script>
+<style lang="stylus" scoped>
+@import "../../assets/stylus/blue";
+  .addIcon
+    margin-top 0.07rem
+  .square
+      text-align center
+      display inline-block
+      height 0.2rem 
+      width 0.2rem
+      margin-top 0.1rem
+      margin-left 0.1rem
+  .ball-arr
+    display flex 
+    flex-direction row
+  .ball-color
+    width 0.19rem!important
+    height 0.19rem!important
+    line-height 0.19rem!important
+  .liuHe
+    .rule-head
+      display flex
+      flex-direction row
+      height 0.92rem
+      background-color $main-content-color
+      margin-bottom 0.05rem
+      .lottery-name
+        text-align center
+        line-height 1.195rem
+        border-radius 0.05rem
+        p
+          margin-left 0.36rem
+          margin-top 0.13rem
+          width 0.7rem
+          height 0.7rem
+          border-radius 50%
+          overflow hidden
+          .lotteryIcon
+            width 0.7rem
+            height 0.7rem
+      .lottery-info
+        width 80%
+        margin-left 0.2rem
+        .ballBox
+          p
+            font-size 0.12rem
+            color $font-gray-color
+            position relative
+            top 0.05rem
+          span
+            color $font-color
+            margin-left 0.05rem
+            display inline-block
+            line-height 0.2rem
+            width 0.21rem
+            height 0.21rem
+            border-radius 50%
+            text-align center
+        p
+          color $font-color 
+          margin-top 0.02rem
+        .timeColor
+          margin-left 0.06rem
+          span
+            em
+              color $font-green-color
+              font-size 0.16rem
+          p
+            color $font-green-color
+            font-size 0.16rem
+.gameNoDialog
+    width 100%
+    height 100%
+    z-index 9999
+    position fixed
+    background rgba(0,0,0,0.8)
+    left 0
+    top 0
+    filter "Alpha(opacity=60)"
+    opacity 1
+    .infoList
+        height 1.5rem
+        width 2.35rem
+        z-index 99999
+        background-color #42475d
+        position absolute
+        top 50%
+        left 50%
+        transform translate(-50%,-50%)
+      
+        span 
+            display inline-block
+            height 0.4rem
+            width 100%
+            font-size 0.16rem
+            background-color #31374d
+</style>
+

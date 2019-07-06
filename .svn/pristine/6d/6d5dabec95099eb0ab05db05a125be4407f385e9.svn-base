@@ -1,0 +1,367 @@
+<template lang="jade">
+  // 六合彩
+  .liuhe
+    .rule-top-list
+      ul.rule-header
+        li(v-for="(item,index) in secondRulePercent", :class="{ 'act': menuIdx == index}", @click="secondMenu(item, index)", :type="item.betOn", :key="index") {{item.betOnValue}}
+    .rule-btn-list(v-if="secondRulePercent.length > 0")
+      //特码，正码
+      .special-code(v-if="secondRulePercent[menuIdx].betOn == 'TEMA' || secondRulePercent[menuIdx].betOn.indexOf('ZHENGTE') != -1 || secondRulePercent[menuIdx].betOn.indexOf('ZHENGMA') != -1")
+        ul
+          li(v-for="(it, k, idx) in tema(1)", @click="betsMoney(it, k, idx)", :class="it.isShow == true ? 'percentBack':''", :key="it.id")
+            span(:class="changeBall(it.color)") {{ it.betValue }}
+            //- span {{ it.odds }}
+            span {{closeLottery == true ? '--' : it.odds}}
+          li(v-if="Object.keys(tema(1)).length % 4 != 0", v-for="i in 4- (Object.keys(tema(1)).length % 4)")
+        ul
+          li.china(v-for="(it, k, idx) in tema(2)", @click="betsMoney(it, k, idx)", :class="it.isShow == true ? 'percentBack':''", :key="it.id")
+            span(:class="changeBall(it.color)") {{ it.betValue }}
+            //- span {{ it.odds }}
+            span {{closeLottery == true ? '--' : it.odds}}
+          li.china(v-if="Object.keys(tema(2)).length % 2 == 1")
+      //特码头
+      .special-code-head(v-else-if="secondRulePercent[menuIdx].betOn == 'TEMA_TOU'")
+        p 特码头
+        ul
+          li(v-for="(it, k, idx) in temaHead('TEMA_TOU')", @click="betsMoney(it, k, idx)", :class="it.isShow == true ? 'percentBack':''", :key="it.id")
+            span {{ it.betValue }}
+            //- span {{ it.odds }}
+            span {{closeLottery == true ? '--' : it.odds}}
+          li(v-if="Object.keys(temaHead('TEMA_TOU')).length % 2 == 1")
+        p 特码尾
+        ul
+          li(v-for="(it, k, idx) in temaHead('TEMA_WEI')", @click="betsMoney(it, k, idx)", :class="it.isShow == true ? 'percentBack':''", :key="it.id")
+            span {{ it.betValue }}
+            span {{ it.odds }}
+          li(v-if="Object.keys(temaHead('TEMA_WEI')).length % 2 == 1")
+      ul(v-else)
+        li(v-for="(val, k, idx) in secondRulePercent[menuIdx].betTypeList[0]", @click="betsMoney(val,k,idx)", :type="secondRulePercent[menuIdx].betOn", :class="val.isShow == true ? 'percentBack':''", :key="k")
+          span(:class="changeBall(val.color)") {{ val.betValue }}
+          .ball(v-if="val.ballList")
+            .ball-item(v-for="it in val.ballList", :key="it.id")
+              i(:class="changeBall(it.color)") {{ it.ballNo }}
+          //- span {{ val.odds }}
+          span {{closeLottery == true ? '--' : val.odds}}
+</template>
+<script>
+import { mapState } from 'vuex'
+export default {
+  data(){
+    return{
+      betsList: [], //一维
+      more_bets: {
+        betsList2: [], //二维
+        betsList3: [], //三维
+      },
+      betsObj: {}, //提交的对象
+      menuIdx: this.menuInit, //二级玩法当前点击的索引
+      statusList: [], //点击状态的数组
+      obj_list2: { //所有二肖选中的投注项
+        list_SHENGXIAO6_2: [], //二肖
+        list_SHENGXIAOLIAN_Y_2: [], //生肖连二肖连中
+        list_SHENGXIAOLIAN_N_2: [], //生肖连二肖连不中
+        list_WEISHULIAN_Y_2: [], //二尾连中
+        list_WEISHULIAN_N_2: [], //二尾连不中
+      },
+      obj_list3: { //所有二肖选中的投注项
+        list_SHENGXIAO6_3: [],
+        list_SHENGXIAOLIAN_Y_3: [],
+        list_SHENGXIAOLIAN_N_3: [],
+        list_WEISHULIAN_Y_3: [],
+        list_WEISHULIAN_N_3: []
+      },
+      resultList: [], //所有点中的列表
+      currentIdx: 0, //投注额的当前索引
+
+    }
+  },
+  props: {
+    menuInit: Number,
+    closeLottery: {
+      type: Boolean,
+      required: true,
+      default: true,
+    },
+  },
+  computed:{
+    ...mapState({
+      secondRule: state => state.homeData.secondRule,
+      secondRulePercent: state => state.homeData.secondRulePercent, // 二级玩法
+      betsGroup: state => state.homeData.betsGroup,
+    }),
+    tema() { //特码 传1，2
+      return function(num){
+        let result1 = {}, result2 = {};
+        let obj = this.secondRulePercent[this.menuIdx].betTypeList[0];
+        for(let key in obj) {
+          if(key.indexOf('NO') != -1) {
+            result1[key] = obj[key];
+          } else {
+            result2[key] = obj[key];
+          }
+        }
+        if(num == 1) {
+          return result1;
+        } else {
+          return result2;
+        }
+      }
+    },
+    temaHead() { //特码头尾
+      return function(param){
+        if(this.secondRulePercent[this.menuIdx].betOn == 'TEMA_TOU') {
+          let result = {};
+          let obj = this.secondRulePercent[this.menuIdx].betTypeList[0];
+          for(let key in obj) {
+            if(key.indexOf(param) != -1) {
+              result[key] = obj[key];
+            }
+          }
+          return result;
+        }
+      }
+    },
+  },
+  created() {
+
+  },
+  mounted() {
+  },
+  methods: {
+    betsMoney(item, k, index){  // 点击赔率下注
+      // console.log("item", item)
+      this.currentIdx = index;
+      let secondRulePercent = this.secondRulePercent[this.menuIdx];
+      let arr_two = ['SHENGXIAO6_2', 'SHENGXIAOLIAN_Y_2', 'SHENGXIAOLIAN_N_2', 'WEISHULIAN_Y_2', 'WEISHULIAN_N_2'];
+      let arr_three = ['SHENGXIAO6_3', 'SHENGXIAOLIAN_Y_3', 'SHENGXIAOLIAN_N_3', 'WEISHULIAN_Y_3', 'WEISHULIAN_N_3', ]
+      this.betsObj = {
+        id:secondRulePercent.id,
+        betId:item.id,
+        ruleName:this.secondRule.betOnValue,
+        rule:item.betValue,
+        money:item.odds,
+        betOn: item.betType,
+        betOnValue: this.secondRulePercent[this.menuIdx].betOnValue,
+        indexList: [this.menuInit, this.menuIdx, index]
+      }
+      let twoIdx = arr_two.findIndex(it => {
+        return it == secondRulePercent.betOn;
+      })
+      let threeIdx = arr_three.findIndex(it => {
+        return it == secondRulePercent.betOn;
+      })
+
+      if(twoIdx != -1) {
+        this.twoDimension(item, this.obj_list2['list_' + secondRulePercent.betOn], secondRulePercent.betOnValue, 2);
+      } else if(threeIdx != -1) {
+        this.twoDimension(item, this.obj_list3['list_' + secondRulePercent.betOn], secondRulePercent.betOnValue, 3);
+      } else {
+        this.pushBetsList(item, this.betsObj); //一维
+      }
+
+      this.resultList = this.betsList.concat(this.more_bets['betsList2']).concat(this.more_bets['betsList3']);
+      if(this.resultList.length > 10) {
+        this.$tips.info("最多可以选择10项");
+        item.isShow = false;
+        return;
+      }
+
+      if(this.$store.state.homeData.changeCalculation == false){
+        this.$store.state.homeData.changeCalculation = true;
+      }
+      this.$store.state.homeData.carHead = true;
+      this.$store.state.homeData.inputBetingMount = true;
+      this.$store.state.homeData.changeCalculation = true; // 购物车的显示隐藏状态存到Store里面
+      console.log("选中：",this.resultList)
+      this.$store.state.homeData.betsGroup = this.resultList;
+    },
+    secondMenu(item, idx){ //二级玩法tab效果和数据动态切换
+      console.log(item.betOn)
+      this.menuIdx = idx;
+    },
+    changeBall(val) {
+      switch (val) {
+        case "RED":
+          return "ball-color ball-red"
+          break;
+        case "GREEN":
+          return "ball-color ball-green"
+          break;
+        case "BLUE":
+          return "ball-color ball-blue"
+          break;
+      }
+    },
+    twoDimension(current, arr, str, num) { //current:当前点击的投注额，arr：点击选中的所有列表， str：要比较的字段，num:二肖或三肖
+      let result = []; //二肖的betValue的列表
+      let result_betType = []; //二肖的betType的列表
+      let secondRulePercent = this.secondRulePercent[this.menuIdx];
+      let res_list = this.more_bets['betsList' + num]; //二肖或三肖的最终得到的列表
+
+      this.more_bets['betsList' + num]= this.more_bets['betsList' + num].filter(it => {
+        return it.betOnValue != secondRulePercent.betOnValue;
+      })
+      let moreIdx = arr.findIndex(it => {
+        return it.id == this.betsObj.betId;
+      });
+      if(moreIdx == -1) {
+        if(arr.length < (num - 1)) {
+          this.$tips.info(`至少选择${num}项`);
+        }
+        if(arr.length >= 5) {
+          this.$tips.info(`最多选择5项`);
+        } else {
+          current.isShow = true;
+          arr.push(this.betsObj);
+        }
+      } else {
+        current.isShow = false;
+        arr.splice(moreIdx, 1);
+      }
+      let minMoney = Math.min.apply(Math, arr.map((o) => {return o.money})); //最小赔率
+      arr.forEach(it => {
+        if(it.betOnValue == str) {
+          result.push(it.rule);
+          result_betType.push(it.betOn);
+        }
+      })
+      if(this.groupSplit(result, num).length == 0){
+        this.$store.state.homeData.betsGroup = this.betsList;
+        return false;
+      }
+      result_betType = this.groupSplit(result_betType, num);
+      this.groupSplit(result, num).forEach((it, idx) => {
+        let x = {
+          id:secondRulePercent.id,
+          ruleName:this.secondRule.betOnValue,
+          rule:it.join(','),
+          money:minMoney,
+          betOn:result_betType[idx].join(','),
+          betOnValue:this.secondRulePercent[this.menuIdx].betOnValue,
+          indexList: [this.menuInit, this.menuIdx, this.currentIdx]
+        }
+        this.more_bets['betsList' + num].push(x);
+      })
+    },
+    pushBetsList(current, obj= this.betsObj) {　//一维的
+      let idx = this.betsList.findIndex(it => {
+          return it.id == obj.betId;
+      });
+      if(idx == -1) {
+        if(this.betsList.length >= 10) {
+          // this.thisPercentColor[k][index] = false;
+          this.$tips.info("最多下注10项");
+          return;
+        }
+        current.isShow = true;
+        this.betsList.push(obj);
+      } else {
+        current.isShow = false;
+        this.betsList.splice(idx, 1);
+      }
+    },
+    groupSplit(arr, size) {  //组合
+      if(arr.length < size) {
+        return [];
+      }
+      let r = []; //result
+      function _(t, a, n) { //tempArr, arr, num
+        if (n === 0) {
+          r[r.length] = t;
+          return;
+        }
+        for (var i = 0, l = a.length - n; i <= l; i++) {
+          var b = t.slice();
+          b.push(a[i]);
+          _(b, a.slice(i + 1), n - 1);
+        }
+      }
+      _([], arr, size);
+      return r;
+    },
+  },
+  watch: {
+    menuInit(newVal, oldVal) { //点击一级玩法时设置二级玩法的索引为0
+      if(newVal != oldVal) {
+        this.menuIdx = 0;
+        // console.log("firstInit", this.menuInit)
+      }
+    },
+  }
+}
+</script>
+<style lang="stylus">
+@import '../../assets/stylus/blue.styl'
+.liuhe
+  .rule-header
+    display flex
+    flex-direction row
+    li
+      width 25%
+      border-bottom 1px solid $lottery-border
+      border-right 1px solid $lottery-border
+      &.act
+        background-color $main-content-color
+        font-size 0.14rem
+        color $font-green-color
+      &[type*="WEISHULIAN"],
+      &[type*="SHENGXIAOLIAN"],
+      &[type*="SHENGXIAO_N"],
+      &[type*="SHENGXIAO_Y"],
+      &[type*="SHENGXIAO_1"],
+      &[type*="WEISHU"]
+        width 50%
+      &[type="SHENGXIAO_TE"],
+      &[type="SHENGXIAO6_2"],
+      &[type="SHENGXIAO6_3"],
+      &[type="ZHENGTE_4"],
+      &[type="ZHENGTE_5"],
+      &[type="ZHENGTE_6"]
+        width 33.3%
+  .rule-btn-list
+    .special-code
+      ul
+        li
+          width 25%
+          &.china
+            width 50%
+    .special-code-head
+      p
+        width 100%
+        text-align center
+        line-height .3rem
+        border-bottom 1px solid $lottery-border
+    ul
+      li
+        width 50%
+        &.percentBack
+          background-color #5b6488
+        &:nth-child(even)
+          border-right 1px solid $lottery-border
+        &[type="WUXING"],
+        &[type="BANBO"],
+        &[type*="SHENGXIAO"],
+        &[type*="WEISHULIAN"]
+          width 100%
+          display flex
+          justify-content space-around
+          align-items center
+          padding .06rem 0
+          span
+            width 20%
+          .ball
+            width 60%
+            display inline-block
+            align-content flex-start
+            display flex
+            flex-flow row wrap
+            justify-content flex-start
+            align-items center
+            // border 1px solid red
+            .ball-item
+              display inline-block
+              width 20%
+              i
+                font-style normal
+
+</style>

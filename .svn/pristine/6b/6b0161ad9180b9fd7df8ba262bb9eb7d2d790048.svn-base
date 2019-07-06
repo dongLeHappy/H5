@@ -1,0 +1,391 @@
+<template lang="jade">
+    div.allKindLottery
+        ul.games
+            li(@click="getSubGame('all')", :class="active == 'all' ? 'actives' : ''") 全部彩种
+            li(v-for="list,index in firstLotteryArr", :key="index", @click="getSubGame(list.id,index)", :class="active == index ? 'actives' : ''") {{ list.name }}
+        div.game-content
+            ul.sub-games
+                li(v-for="list,index in (active == 'all' ? allSecondLottery : secondLottery[lotteryIndex])", :key="index",@click="checkLotteryRule(list.code,list.name,list)")
+                    .lottery-type
+                        svg-icon.lottery-icon(:icon-class="changeLotteryLogo(list.code)")
+                    .lottery-sub-type
+                        p(v-if="list.code") {{ list.code | changeName}}
+                        p
+                            span {{list.disabled == false ? "进行中" : "已关盘"}}
+</template>
+
+<script>
+import { getGames } from '@/api/home'
+import { getRuleOrPercent,intervalMainPage } from '../../api/home/homePage'
+import { debug, debuglog } from 'util';
+import { mapState} from 'vuex'
+import { setInterval, clearInterval } from 'timers';
+export default {
+    name: 'allGames',
+    data () {
+        return {
+            games: [], // 当前的二级彩种
+            allGames: [], // 所有猜中
+            active: false, // 判断是否选中
+            indexAll: '', //
+            lotteryIndex: 0,
+        }
+    },
+    computed:{
+        ...mapState({
+            firstLotteryArr: state => state.homeData.firstLottery, // 一级彩种
+            alreaySucces: state => state.homeData.alreaySucces, // 判断是否已经存储
+            hotGame:state => state.homeData.hotGameList,
+            noticeContent: state => state.homeData.noticeContent
+        }),
+        secondLottery:{ // 二级彩种
+            get() {
+                return this.$store.state.homeData.secondLottery;
+            },
+            set(item) {
+                return item
+            }
+        },
+        allSecondLottery:{ // 所有二级彩种
+            get() {
+                return this.$store.state.homeData.allSecondLottery;
+            },
+            set(item) {
+                return item
+            }
+        },
+        serverOpenTime:{ // 服务器时间
+            get() {
+                return this.$store.state.homeData.serverOpenTime;
+            },
+            set(item) {
+                return item
+            }
+        }
+    },
+    filters:{
+        changeName(val){ // 转换彩种名
+            switch (val) {
+                case 'HK_LH':
+                    return "六合彩"
+                    break;
+                case 'SSC_TJ':
+                    return "天津时时彩"
+                    break;
+                case 'SSC_XJ':
+                    return "新疆时时彩"
+                    break;
+                case 'SSC_CQ':
+                    return "重庆时时彩"
+                    break;
+                case 'SSC_YN':
+                    return "云南时时彩"
+                    break;
+                case 'KLT_GD':
+                    return "广东快乐十分"
+                    break;
+                case 'KLT_TJ':
+                    return "天津快乐十分"
+                    break;
+                case 'KLT_HuN':
+                    return "湖南快乐十分"
+                    break;
+                case 'KLT_SX3':
+                    return "陕西快乐十分"
+                    break;
+                case 'KLT_YN':
+                    return "云南快乐十分"
+                    break;
+                case 'KLT_SX1':
+                    return "山西快乐十分"
+                    break;
+                case 'EF_HuB':
+                    return "湖北11选5"
+                    break;
+                case 'EF_GD':
+                    return "广东11选5"
+                    break;
+                case 'EF_AH':
+                    return "安徽11选5"
+                    break;
+                case 'EF_SH':
+                    return "上海11选5"
+                    break;
+                case 'EF_JX':
+                    return "江西11选5"
+                    break;
+                case 'EF_JS':
+                    return "江苏11选5"
+                    break;
+                case 'EF_SD':
+                    return "山东11选5"
+                    break;
+                case 'EF_LN':
+                    return "辽宁11选5"
+                    break;
+                case 'FT_HuB':
+                    return "湖北快3"
+                    break;
+                case 'FT_GX':
+                    return "广西快3"
+                    break;
+                case 'FT_AH':
+                    return "安徽快3"
+                    break;
+                case 'FT_JL':
+                    return "吉林快3"
+                    break;
+                case 'FT_JX':
+                    return "江西快3"
+                    break;
+                case 'FT_JS':
+                    return "江苏快3"
+                    break;
+                case 'FT_FJ':
+                    return "福建快3"
+                    break;
+                case 'FT_BJ':
+                    return "北京快3"
+                    break;
+                case 'PKT_BJ':
+                    return "北京PK10"
+                    break;
+            }
+        }
+    },
+    mounted(){
+        this.getSubGame('all');
+        this.intervalMainPage();
+    },
+    methods: {
+        getSubGame(id,index){ // 一级玩法获取以及点击切换
+            this.lotteryIndex = index;
+            if(id == "all"){
+                this.active = id;
+                this.$store.state.homeData.allSecondLottery = this.allSecondLottery
+            } else {
+                this.active = index;
+            }
+        },
+
+        intervalMainPage(){ // 主页轮询
+            this.intervalMainPage = setInterval(() => {
+                intervalMainPage().then( res => {
+                    let par = res.data;
+                    if(par.success == 1){
+                        let second = [];
+                        let allLottery = [];
+                        let child = par.content.lotteryTree;
+                        this.$store.state.homeData.persenalBalance = par.content.balance;
+                        for (var i = 0; i < child.length; i++) {
+                            second.push(child[i].children); // 二级彩种
+                        }
+                        for (var j = 0; j < second.length; j++) {
+                            for (var t = 0; t < second[j].length; t++) {
+                                allLottery.push(second[j][t]); // 所有彩种
+                            }
+                        }
+                        if(this.active == 'all'){
+                            this.$store.state.homeData.allSecondLottery = allLottery
+                        }else{
+                            this.$store.state.homeData.secondLottery = second
+                        }
+                    }
+                })
+            },3000)
+        },
+        checkLotteryRule(id,name,item){ //  点击二级彩种
+            let data = {lotteryId:item.id}
+            getRuleOrPercent(data).then( (res) => {  //  获取，存储当前点击的一级玩法
+                if(res.data.success == 1){
+                    let par = res.data.content;
+                    par.map(item => {
+                        item.playRuleList.map(it => {
+                            it.betTypeList.map(element => {
+                                Object.values(element).map(ele => {
+                                    ele.isShow = false;
+                                })
+                            })
+                        })
+                    })
+                    this.$store.state.homeData.thisFirstRule = par;
+                    // this.$router.push({path:'/lotteryEnter',name:"lotteryEnter",query:{name:name,id:id}})
+                    this.$router.push(`/lotteryEnter?id=${id}&par=${item.id}`)
+                }
+
+            })
+        },
+        changeLotteryLogo(icon){  // 彩种logo
+            switch (icon) {
+                case 'HK_LH':
+                    return "lhc_icon"
+                    break;
+                case 'SSC_TJ':
+                    return "tj_ssc"
+                    break;
+                case 'SSC_XJ':
+                    return "xj_ssc"
+                    break;
+                case 'SSC_CQ':
+                    return "cq_ssc"
+                    break;
+                case 'SSC_YN':
+                    return "yn_ssc"
+                    break;
+                case 'KLT_GD':
+                    return "gd_klsf"
+                    break;
+                case 'KLT_TJ':
+                    return "tj_klsf"
+                    break;
+                case 'KLT_HuN':
+                    return "hn_klsf"
+                    break;
+                case 'KLT_SX3':
+                    return "sx_klsf"
+                    break;
+                case 'KLT_YN':
+                    return "yn_klsf"
+                    break;
+                case 'KLT_SX1':
+                    return "shx_klsf"
+                    break;
+                case 'EF_HuB':
+                    return "hb11_icon"
+                    break;
+                case 'EF_GD':
+                    return "gd_icon"
+                    break;
+                case 'EF_AH':
+                    return "ah_icon"
+                    break;
+                case 'EF_SH':
+                    return "sh11_icon"
+                    break;
+                case 'EF_JX':
+                    return "jx11_icon"
+                    break;
+                case 'EF_JS':
+                    return "js11_icon"
+                    break;
+                case 'EF_SD':
+                    return "sd11_icon"
+                    break;
+                case 'EF_LN':
+                    return "ln11_icon"
+                    break;
+                case 'FT_HuB':
+                    return "hb_k3"
+                    break;
+                case 'FT_GX':
+                    return "gx_k3"
+                    break;
+                case 'FT_AH':
+                    return "ah_k3"
+                    break;
+                case 'FT_JL':
+                    return "jl_k3"
+                    break;
+                case 'FT_JX':
+                    return "jx_k3"
+                    break;
+                case 'FT_JS':
+                    return "js_k3"
+                    break;
+                case 'FT_FJ':
+                    return "fj_k3"
+                    break;
+                case 'FT_BJ':
+                    return "bj_k3"
+                    break;
+                case 'PKT_BJ':
+                    return "PK10_icon"
+                    break;
+            }
+        },
+    },
+    destroyed(){
+       clearInterval(this.intervalMainPage);
+    }
+
+}
+</script>
+
+<!-- 添加“scoped”属性以仅将CSS限制为此组件 -->
+<style scoped lang="stylus">
+@import "../../assets/stylus/blue";
+
+.allKindLottery
+     margin auto
+    .games
+        display flex
+        flex-direction row
+        flex-wrap wrap
+        background $mian-contentoutside-color
+        height 0.8rem
+        background-color $mian-contentoutside-color
+        box-shadow 0rem 0rem 0.08rem 0rem rgba(29, 24, 26, 0.2)
+        margin 0.05rem 0rem
+        li
+            width 0.75rem
+            height 0.25rem
+            line-height 0.25rem
+            text-align center
+            cursor pointer
+            margin 0.10rem 0 0 0.11rem
+            font-size 0.14rem
+            background-color $lottery-tab-color
+            &:nth-child(5)
+                margin-top 0.015rem
+            &:nth-child(6)
+                margin-top 0.015rem
+            &:nth-child(7)
+                margin-top 0.015rem
+            &:nth-child(8)
+                margin-top 0.015rem
+    .game-content
+        height 100%
+        .sub-games
+            display flex
+            justify-content space-around
+            width 100%
+            height auto
+            flex-wrap wrap
+            justify-content flex-start
+            flex-direction row
+            padding-top 0.06rem
+            background $mian-contentoutside-color
+            li
+                width 1.57rem
+                height 0.615rem
+                margin-bottom 0.05rem
+                margin-right 0.1rem
+                display flex
+                justify-content flex-start
+                padding 0.05rem
+                cursor pointer
+                margin-left 0.1rem
+                font-size 0.14rem
+                border-bottom  0.01rem solid #4f546a
+                .lottery-type
+                    text-align center
+                    width 35%
+                    .lottery-icon
+                        display inline-block
+                        height 0.45rem
+                        width 0.45rem
+                        margin auto
+                    span
+                        display inline-block
+                        width 0.5rem
+                .lottery-sub-type
+                    padding-left 0.05rem
+                    line-height 0.25rem
+                    p:first-child
+                        font-size 0.14rem
+                    p:last-child
+                        color $lottery-color
+    .actives
+        color $font-green-color
+        font-weight bold
+</style>

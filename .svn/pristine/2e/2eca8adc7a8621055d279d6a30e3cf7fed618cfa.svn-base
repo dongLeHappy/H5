@@ -1,0 +1,265 @@
+<template lang="jade">
+  .lottery-dialog(v-show="showSelect",@click="hiddenDialog")
+    datalist.all-lottery-tobe-Select
+        ul.parent-lottery
+            li(v-if="isMe == true",@click.stop="getSubGame('all')", :class="active == 'all' ? 'actives' : ''") 全部彩种
+            li(v-for="list,index in firstLotteryArr", :key="index",@click.stop="getSubGame(list.id)", :class="active == index ? 'active' : ''") {{ list.name }}
+        .choose-lotery
+            p
+            ul.child-lottery
+                li.allFont(v-if="allLottery == true",@click.stop="changeParentLottery('','全部彩种')") 
+                    span 全部
+                li(v-else,v-for="list,index in subGames", :key="index",@click.stop="changeParentLottery(list.code,list.name,list.id)")
+                    .lottery-sub-type 
+                        p 
+                            span 
+                                svg-icon.lottery-icon(:icon-class="changeLotteryLogo(list.code)")
+                            span {{ list.name }}
+    //- .bg(v-if="showSelect",@click="hiddenDialog")
+</template>
+<script>
+import { mapState} from 'vuex'
+import lotteryDialog from './lotteryDialog'
+export default {
+  data(){
+    return{
+      subGames:[],
+      active: false,
+      allLottery:false
+    }
+  },
+  
+  props:['isMe'],
+  computed:{
+    ...mapState({
+        firstLotteryArr: state => state.homeData.firstLottery, // 一级彩种
+        secondLotteryArr: state => state.homeData.secondLottery, // 二级彩种
+        allSecondLottery: state => state.homeData.allSecondLottery, // 所有二级彩种
+    }),
+    showSelect:{
+        get() {
+            return this.$store.state.homeData.showSelect
+        },
+        set(item) {
+            return item
+        }
+    },
+  },
+  mounted(){
+      this.getSubGame(0);
+  },
+  methods:{
+    getSubGame(id,name){ // 一级玩法获取以及点击切换
+        this.subGames = [];
+        this.active = id;
+        if(id == 'all') {
+            this.allLottery = true;
+            this.subGames = this.allSecondLottery
+        } else {
+            this.allLottery = false;
+            for(let i = 0;i < this.secondLotteryArr.length;i++){
+                if( i == id){
+                    this.subGames = [];
+                    this.subGames = this.secondLotteryArr[i];
+                }
+            }
+        }
+    },
+    changeLotteryLogo(icon){  // 彩种logo
+        switch (icon) {
+            case 'HK_LH':
+                return "lhc_icon"
+                break;
+            case 'SSC_TJ':
+                return "tj_ssc"
+                break;
+            case 'SSC_XJ':
+                return "xj_ssc"
+                break;
+            case 'SSC_CQ':
+                return "cq_ssc"
+                break;
+            case 'SSC_YN':
+                return "yn_ssc"
+                break;
+            case 'KLT_GD':
+                return "gd_klsf"
+                break;
+            case 'KLT_TJ':
+                return "tj_klsf"
+                break;
+            case 'KLT_HuN':
+                return "hn_klsf"
+                break;
+            case 'KLT_SX3':
+                return "sx_klsf"
+                break;
+            case 'KLT_YN':
+                return "yn_klsf"
+                break;
+            case 'KLT_SX1':
+                return "shx_klsf"
+                break;
+            case 'EF_HuB':
+                return "hb11_icon"
+                break;
+            case 'EF_GD':
+                return "gd_icon"
+                break;
+            case 'EF_AH':
+                return "ah_icon"
+                break;
+            case 'EF_SH':
+                return "sh11_icon"
+                break;
+            case 'EF_JX':
+                return "jx11_icon"
+                break;
+            case 'EF_JS':
+                return "js11_icon"
+                break;
+            case 'EF_SD':
+                return "sd11_icon"
+                break;
+            case 'EF_LN':
+                return "ln11_icon"
+                break;
+            case 'FT_HuB':
+                return "hb_k3"
+                break;
+            case 'FT_GX':
+                return "gx_k3"
+                break;
+            case 'FT_AH':
+                return "ah_k3"
+                break;
+            case 'FT_JL':
+                return "jl_k3"
+                break;
+            case 'FT_JX':
+                return "jx_k3"
+                break;
+            case 'FT_JS':
+                return "js_k3"
+                break;
+            case 'FT_FJ':
+                return "fj_k3"
+                break;
+            case 'FT_BJ':
+                return "bj_k3"
+                break;
+            case 'PKT_BJ':
+                return "PK10_icon"
+                break;
+
+        }
+    },
+    hiddenDialog(){
+        this.$store.state.homeData.showSelect = false;
+    },
+    changeParentLottery(code,name,id){ // 切换彩种列表
+        debugger
+        this.$store.state.homeData.showSelect = false;
+        this.lotteryId = code;
+        this.$store.state.homeData.changeLotteryId = id;
+        this.$store.state.homeData.changeLotteryName = name;
+        this.$emit("changeVal",this.lotteryId);
+        this.$emit("changeInfoData",this.lotteryId);
+        this.$emit('isLogFn',this.lotteryId)
+    },
+  }
+}
+</script>
+<style lang="stylus">
+@import '../../assets/stylus/blue.styl'
+.allFont
+    text-align left 
+    span
+        width 0.7rem
+        display inline-block
+        background-color $dialog-child-back-colo
+        border-radius 10%
+        line-height 0.35rem
+        margin-left -0.7rem!important
+        margin-top 0.1rem
+.actives
+    color $font-green-color
+    font-weight bold
+.lottery-dialog
+    width 100%
+    height 100%
+    z-index 9999
+    position fixed
+    background rgba(0,0,0,0.8)
+    left 0
+    top 0
+    filter "Alpha(opacity=60)"
+    opacity 1
+    .all-lottery-tobe-Select
+        display block
+        height 3rem
+        width 95%
+        z-index 99999
+        position absolute
+        top 50%
+        left 50%
+        transform translate(-50%,-50%)
+        .parent-lottery
+            background-color $mian-contentoutside-color
+            display flex
+            flex-direction row
+            flex-wrap wrap
+            margin-bottom 0.05rem
+            li
+                width 0.75rem
+                height 0.25rem
+                line-height 0.22rem
+                text-align center
+                color $font-color
+                background-color $main-content-color
+                border 0.01rem solid transparent
+                margin-left 0.11rem
+                margin-top 0.1rem
+                margin-bottom 0.1rem
+                &:nth-child(5)
+                    margin-top 0rem
+                &:nth-child(6)
+                    margin-top 0rem
+                &:nth-child(7)
+                    margin-top 0rem
+                &:nth-child(8)
+                    margin-top 0rem
+        .choose-lotery
+            height 3rem
+            background-color $mian-contentoutside-color
+            .child-lottery
+                display flex
+                flex-direction row
+                flex-wrap wrap
+                background-color $mian-contentoutside-color
+                justify-content space-between
+                height auto
+                padding 0.1rem
+                li
+                    width 48%
+                    height 0.56rem
+                    text-align center
+                    border-bottom 0.01rem solid #444b64
+                    margin-top 0.14rem
+                    &:first-child
+                        margin-top 0rem
+                    &:nth-child(2)
+                        margin-top 0rem
+                    span 
+                        display inline-block
+                        width 50%
+                        color $font-color
+                        &:last-child
+                            position relative
+                            top -0.15rem
+                        .lottery-icon
+                            display inline-block
+                            height 0.45rem
+                            width 0.45rem
+                            margin auto
+</style>

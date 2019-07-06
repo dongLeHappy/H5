@@ -1,0 +1,275 @@
+<template lang="jade">
+  //- 快三
+  .faster-three
+    .rule-top-list
+      ul
+        li {{secondRulePercent[0].betOnValue}}
+    .rule-btn-list(v-for="item,index in secondRulePercent",v-if="secondRulePercent.length > 0")
+      ul
+        //- li(v-for="val,i,k in item.betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i",@click="betsMoney(val,i,index)")
+        li(v-for="val,i,k in secondRulePercent[menuIdx].betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i",@click="betsMoney(val,i,k)")
+          span
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'SAN_JUN'")
+              svg-icon.square(:icon-class="changeSquare(val)")
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'TRIPLE' && val.betValue != '全骰'") {{val.betValue == '全骰' ? "全骰" : ""}}
+              svg-icon.square(:icon-class="changeSquare(val)")
+              svg-icon.square(:icon-class="changeSquare(val)")
+              svg-icon.square(:icon-class="changeSquare(val)")
+            span(v-if="secondRule.playRuleList[0].betOn == 'TRIPLE' && val.betValue == '全骰'") {{val.betValue}}
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'SPEC_TWO' || secondRule.playRuleList[0].betOn == 'PAIR' ")
+              svg-icon.square(:icon-class="chengeSquareTweA(val.betValue)")
+              svg-icon.square(:icon-class="chengeSquareTweB(val.betValue)")
+            span.square-icon(v-if="secondRule.playRuleList[0].betOn == 'TOTAL' ") {{ val.betValue }}
+            //- svg-icon.ball(:icon-class="changeBall(val)")
+          span.percent {{val.odds}}
+
+</template>
+<script>
+
+import { mapState } from 'vuex'
+export default {
+  data(){
+    return{
+      test: [],
+      routeId:"",
+      percentBack:'',
+      clickPercent:false, // 记录是否点击了赔率
+      activeClass:false,
+      activeClass1:false, // 以此判断球号颜色
+      betsGroup:{  // 下注列表
+        id:"",
+        rule:"",
+        ruleName:"",
+        money:"",
+        betOn:""
+      },
+      squareArr:[
+        {name:'one'},
+        {name:'twe'},
+        {name:'three'},
+        {name:'four'},
+        {name:'five'},
+        {name:'six'},
+      ],
+      betsList: [], //点中的列表
+      changPaiParA:"",
+      changPaiParB:"",
+      menuIdx: this.menuInit, //二级玩法当前点击的索引
+    }
+  },
+  props: {
+    menuInit: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+
+  },
+  created(){
+    this.routeId = this.$route.query.id;
+  },
+
+  computed:{
+    ...mapState({
+      secondRule: state => state.homeData.secondRule,
+      secondRulePercent: state => state.homeData.secondRulePercent,
+      betsGroups: state => state.homeData.betsGroup
+    }),
+    changeCalculate:{
+      get(){
+        return this.$store.state.homeData.changeCalculation;
+      },
+      set(item) {
+        return this.$store.state.homeData.changeCalculation;
+      }
+    }
+  },
+  methods:{
+    chengeSquareTweA(val){ // 长牌
+      debugger;
+      let d = val.split('');
+      let dIndex = d[0];
+      switch (dIndex) {
+        case "1":
+          return 'r_one'
+          break;
+        case "2":
+          return "r_twe"
+          break;
+        case "3":
+          return "r_three"
+          break;
+        case "4":
+          return "r_four"
+          break;
+        case "5":
+          return "r_five"
+          break;
+        case "6":
+          return "r_six"
+          break;
+      }
+    },
+    chengeSquareTweB(val){ //长牌
+      let d = val.split('');
+      let dIndex = d[1];
+      switch (dIndex) {
+        case "1":
+          return 'r_one'
+          break;
+        case "2":
+          return "r_twe"
+          break;
+        case "3":
+          return "r_three"
+          break;
+        case "4":
+          return "r_four"
+          break;
+        case "5":
+          return "r_five"
+          break;
+        case "6":
+          return "r_six"
+          break;
+      }
+    },
+    changeSquare(val){  // 三军,围骰,全骰
+      console.log("啥",val)
+      let square = val.betValue;
+      switch (square) {
+        case "1":
+          return 'one'
+          break;
+        case "2":
+          return "twe"
+          break;
+        case "3":
+          return "three"
+          break;
+        case "4":
+          return "four"
+          break;
+        case "5":
+          return "five"
+          break;
+        case "6":
+          return "six"
+          break;
+        case "111":
+          return 'one'
+          break;
+        case "222":
+          return "twe"
+          break;
+        case "333":
+          return "three"
+          break;
+        case "444":
+          return "four"
+          break;
+        case "555":
+          return "five"
+          break;
+        case "666":
+          return "six"
+          break;
+        case "全骰":
+          return ""
+          break;
+      }
+    },
+    betsMoney(item,index,k){  // 点击赔率下注
+    //   console.log("当前点击:", item);
+      if(this.$store.state.homeData.changeCalculation == false){
+        this.$store.state.homeData.changeCalculation = true;
+      }
+      this.$store.state.homeData.carHead = true;
+      this.$store.state.homeData.configBets = true;
+      this.$store.state.homeData.changeCalculation = true; // 购物车的显示隐藏状态存到Store里面
+      if(this.betsGroups.length >= 1){
+        this.$store.state.homeData.changeCalculation = false;
+        this.$store.state.homeData.showMore = true;
+      }
+      this.betsGroup = {
+        id:this.secondRule.id,
+        ruleName:this.secondRule.betOnValue,
+        rule:item.betValue,
+        money:item.odds,
+        betOn:item.betType,
+        betOnValue:this.secondRule.betOnValue,
+        indexList:[this.menuInit, this.menuIdx, k]
+      }
+
+      console.log("bets", this.betsGroup)
+      if(this.$store.state.homeData.betsGroup.length == 0) {
+        this.betsList = [];
+      }
+      var idx = this.betsList.findIndex(it => {
+        return it.betOn + k == this.betsGroup.betOn + k;
+      })
+      if(idx == -1) {
+        if(this.betsList.length >= 10) {
+          this.$tips.info("最多下注十项");
+          return;
+        }
+        item.isShow = true;
+        this.betsList.push(this.betsGroup);
+      } else {
+        if(this.betsGroups.length == 2){
+          this.$store.state.homeData.changeCalculation = true;
+          this.$store.state.homeData.showMore = false;
+        }
+        item.isShow = false;
+        this.betsList.splice(idx, 1);
+      }
+      this.$store.state.homeData.betsGroup = this.betsList;
+    }
+  },
+  watch:{
+    menuInit(newVal, oldVal) { //点击一级玩法时设置二级玩法的索引为0
+      if(newVal != oldVal) {
+        this.menuIdx = 0;
+      }
+    }
+  }
+}
+</script>
+<style lang="stylus">
+  .faster-three
+    .percent
+      // border 0.01rem solid red
+    .square-icon
+      text-align center
+      position relative
+      width 100%
+
+      .square
+        // position absolute
+        // top -0.15rem
+        text-align center
+        display inline-block
+        height 0.2rem
+        width 30%
+      // .square1
+      //   position absolute
+      //   top -0.15rem
+      //   text-align center
+      //   display inline-block
+      //   height 0.3rem
+      //   width 30%
+      // .square2
+      //   position absolute
+      //   top -0.15rem
+      //   text-align center
+      //   display inline-block
+      //   height 0.4rem
+      //   width 30%
+      // .square3
+      //   position absolute
+      //   top -0.15rem
+      //   text-align center
+      //   display inline-block
+      //   height 0.5rem
+      //   width 30%
+</style>

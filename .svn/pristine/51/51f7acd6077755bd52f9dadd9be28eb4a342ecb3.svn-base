@@ -1,0 +1,204 @@
+<template lang="jade">
+  // 快乐十分  /  PK10  /  时时彩  /  分分彩   / 11选5
+  .single-ball
+    .rule-top-list
+      ul
+        li {{secondRule.betOnValue}}
+    .rule-btn-list(v-for="item,index in secondRulePercent[menuIdx].betTypeList",v-if="secondRulePercent.length > 0")
+      ul
+        //- li(v-for="val,i,k in item", :class="val.isShow == true ? 'percentBack' : ''", :key="i", @click="betsMoney(val,i,index)")
+        li(v-for="(val, i, k) in secondRulePercent[menuIdx].betTypeList[0]", :class="val.isShow == true ? 'percentBack' : ''", :key="i", @click="betsMoney(val,i,k)")
+          span
+            b
+              em(:class="changeBall(i)") {{ val.betValue }}
+
+            //- span {{closeLottery == true ? '--' : val.odds}}
+          span {{ val.odds }}
+
+</template>
+<script>
+
+import { mapState } from 'vuex'
+export default {
+  props: {
+    closeLottery: {
+      type: Boolean,
+      required: true,
+      default: true,
+    },
+    menuInit: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+  },
+  data(){
+    return{
+      test: [],
+      routeId:"",
+      percentBack:'',
+      clickPercent:false, // 记录是否点击了赔率
+      activeClass:false,
+      activeClass1:false, // 以此判断球号颜色
+      betsGroup:{  // 下注列表
+        id:"",
+        rule:"",
+        ruleName:"",
+        money:"",
+        betOn:""
+      },
+      betsList: [], //点中的列表
+      menuIdx: this.menuInit, //二级玩法当前点击的索引
+    }
+  },
+  created(){
+    this.routeId = this.$route.query.id;
+  },
+
+  computed:{
+    ...mapState({
+      secondRule: state => state.homeData.secondRule,
+      secondRulePercent: state => state.homeData.secondRulePercent,
+      betsGroups: state => state.homeData.betsGroup
+    }),
+    changeCalculate:{
+      get(){
+        return this.$store.state.homeData.changeCalculation;
+      },
+      set(item) {
+        return this.$store.state.homeData.changeCalculation;
+      }
+    }
+  },
+  methods:{
+    changeBall(val){
+      switch (val) {
+        case "NO_0":
+          return "ball-color ball-color0"
+          break;
+        case "NO_1":
+          return "ball-color ball-color1"
+          break;
+        case "NO_2":
+          return "ball-color ball-color2"
+          break;
+        case "NO_3":
+          return "ball-color ball-color3"
+          break;
+        case "NO_4":
+          return "ball-color ball-color4"
+          break;
+        case "NO_5":
+          return "ball-color ball-color5"
+          break;
+        case "NO_6":
+          return "ball-color ball-color6"
+          break;
+        case "NO_7":
+          return "ball-color ball-color7"
+          break;
+        case "NO_8":
+          return "ball-color ball-color8"
+          break;
+        case "NO_9":
+          return "ball-color ball-color9"
+          break;
+        case "NO_10":
+          return "ball-color ball-color0"
+          break;
+        case "NO_11":
+          return "ball-color ball-color1"
+          break;
+        case "NO_12":
+          return "ball-color ball-color2"
+          break;
+        case "NO_13":
+          return "ball-color ball-color3"
+          break;
+        case "NO_14":
+          return "ball-color ball-color4"
+          break;
+        case "NO_15":
+          return "ball-color ball-color5"
+          break;
+        case "NO_16":
+          return "ball-color ball-color6"
+          break;
+        case "NO_17":
+          return "ball-color ball-color7"
+          break;
+        case "NO_18":
+          return "ball-color ball-color8"
+          break;
+        case "NO_19":
+          return "ball-color ball-color9"
+          break;
+        case "NO_20":
+          return "ball-color ball-color0"
+          break;
+      }
+    },
+    betsMoney(item,index,k){  // 点击赔率下注
+      // if(this.closeLottery == true){
+      //   return;
+      // }
+      console.log("item", this.secondRulePercent[this.menuIdx].betTypeList[0])
+      if(this.$store.state.homeData.changeCalculation == false){
+        this.$store.state.homeData.changeCalculation = true;
+      }
+      this.$store.state.homeData.carHead = true;
+      this.$store.state.homeData.configBets = true;
+      this.$store.state.homeData.changeCalculation = true; // 购物车的显示隐藏状态存到Store里面
+      if(this.betsGroups.length >= 1){
+        this.$store.state.homeData.changeCalculation = false;
+        this.$store.state.homeData.showMore = true;
+      }
+      this.betsGroup = {
+        id:this.secondRule.id,
+        ruleName:this.secondRule.betOnValue,
+        rule:item.betValue,
+        money:item.odds,
+        betOn:item.betType,
+        betOnValue:this.secondRule.betOnValue,
+        indexList:[this.menuInit, this.menuIdx, k]
+      }
+      if(this.$store.state.homeData.betsGroup.length == 0) {
+        this.betsList = [];
+      }
+      var idx = this.betsList.findIndex(it => {
+        return it.betOn + k == this.betsGroup.betOn + k;
+      })
+      if(idx == -1) {
+        if(this.betsList.length >= 10) {
+          this.$tips.info("最多下注十项");
+          return;
+        }
+        item.isShow = true;
+        this.betsList.push(this.betsGroup);
+      } else {
+        if(this.betsGroups.length == 2){
+          this.$store.state.homeData.changeCalculation = true;
+          this.$store.state.homeData.showMore = false;
+        }
+        item.isShow = false;
+        this.betsList.splice(idx, 1);
+      }
+      console.log("betsGroup", this.betsGroup)
+      this.$store.state.homeData.betsGroup = this.betsList;
+    }
+  },
+  destroyed(){
+    this.$store.state.homeData.betsGroup = [];
+  },
+  watch:{
+    menuInit(newVal, oldVal) { //点击一级玩法时设置二级玩法的索引为0
+    if(newVal != oldVal) {
+        this.menuIdx = 0;
+        }
+    }
+  }
+}
+</script>
+<style lang="stylus">
+
+</style>

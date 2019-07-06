@@ -1,0 +1,228 @@
+<template lang="jade">
+  div.billDetail
+    div.billdetail-head
+      ul
+        li(v-for="item,index in searchOption",:key="index",@click="changeData(item.name,index,item.id)",:class="addColor == index ? 'changeColor' : '' ") {{item.name}}
+    div.bill-content-list
+      noneRecord(v-if="contentList.length == 0")
+      div.bill-content-head(v-else)
+        ul
+          li(v-for="item,a in headList",:key="a") {{item.name}} 
+      .bill-list 
+        PullTo.pull-to(:top-load-method="topRefresh",:bottom-load-method="bottomRefresh")  
+          div.content-list
+            ul.list-data
+              li(v-for="item,i in contentList",:key="i")
+                span{{item.gameNo}}
+                span{{item.playBalls[0].betNum}}
+                span{{item.playBalls[0].totalBet}}
+                span{{item.playBalls[0].totalEffictive}}
+                span{{item.playBalls[0].totalWinLoss}}
+            p.endTips(v-if="showEnd") —————————&nbsp&nbsp&nbsp&nbsp&nbsp已经到底了&nbsp&nbsp&nbsp&nbsp&nbsp—————————
+
+</template>
+<script>
+import { InfiniteScroll , Spinner } from 'mint-ui';
+import noneRecord from './recordGroup/noneRecord'
+import { mapState } from 'vuex'
+import { getServerTime } from '../../api/home/homePage'
+import { getBettingDetail } from '../../api/memberCenter'
+import PullTo from 'vue-pull-to'
+export default {
+  components: {
+    'mt-spinner':Spinner,
+    PullTo,
+    noneRecord
+  },
+  data(){
+    return{
+      searchOption:[
+        {id:'all',name:"全部"},
+        {id:'week',name:"本周"},
+        {id:'thisMonth',name:"本月"},
+        {id:'beforeMonth',name:"上月"},
+      ],
+      headList:[
+        {id:1,name:"日期"},
+        {id:2,name:"总注单数"},
+        {id:3,name:"总投额"},
+        {id:4,name:"总有效投注"},
+        {id:5,name:"总输赢"}
+      ],
+      loading:false,
+      noMore:false,
+      contentList:[],
+      addColor:false,
+      page:0,
+      size:10,
+      totalPage:'1',
+      beginTime:"",//本周开始
+      endTime:"",// 本周结束
+      thisMonthStart:"",// 本月开始
+      lastMonthStartDate:"",// 上月第一天
+      lastMonthEndDate:"", // 上月最后一天
+      thisParams1:'',
+      thisParams2:'',
+      showEnd:false,
+    }
+  },
+  computed:{
+    ...mapState({
+      // serverTime:state => state.$store.homeData.serverDate
+    }),
+    serverTime:{
+      get() {
+          return this.$store.state.homeData.serverDate
+      },
+      set(item) {
+          return item
+      }
+    },
+  },
+  created(){
+    this.getBettingDetail()
+  },
+  methods:{
+    topRefresh(loaded){  // 上拉刷新
+        this.getBettingDetail(this.thisParams1,this.thisParams2)
+        loaded('done');
+    },
+    bottomRefresh(loaded){ // 下拉刷新
+        if(this.page < this.totalPage ){
+            this.page++;
+            this.getBettingDetail(this.thisParams1,this.thisParams2)
+        }
+        loaded('done');
+    },
+    changeData(val,index,id){ // 选择日期
+      this.addColor = index;
+      this.beginTime = this.getDateTime(0,-6) + ' ' + '00:00'; //本周开始
+      this.endTime = this.getDateTime(0,0) + ' ' + '23:59'; // 本周结束
+      this.thisMonthStart = this.getCurrentMonthFirst() + ' ' + '00:00'; // 本月开始
+      this.lastMonthStartDate = new Date(new Date().getFullYear(), new Date().getMonth()-1, 1); // 上月第一天
+      debugger;
+      var date = new Date();
+      var day = new Date(date.getFullYear(), date.getMonth(), 0).getDate();
+      this.lastMonthEndDate = new Date(new Date().getFullYear(),new Date().getMonth()-1, day); // 上月最后一天
+      if( id == 'week'){
+        this.getBettingDetail(this.beginTime,this.endTime)
+      }
+      if( id == 'thisMonth'){
+        this.getBettingDetail(this.thisMonthStart,this.serverTime)
+      }
+      if( id == 'beforeMonth'){
+        this.getBettingDetail(this.lastMonthStartDate,this.lastMonthEndDate)
+      }
+    },
+    getCurrentMonthFirst(){  // 获取本月第一天
+        var date = new Date();
+        date.setDate(1);
+        var month = parseInt(date.getMonth()+1);
+        var day = date.getDate();
+        if (month < 10) {
+            month = '0' + month
+        }
+        if (day < 10) {
+            day = '0' + day
+        }
+        return date.getFullYear() + '-' + month + '-' + day;
+    },
+    getDateTime(month,addDayCount) { // 获取本周开始时间和本周结束时间
+        var dd = new Date(this.serverTime);
+        dd.setMonth(dd.getMonth() + month,dd.getDate() + addDayCount); //获取AddDayCount天后的日期
+        var y = dd.getFullYear();
+        var m = dd.getMonth() + 1; //获取当前月份的日期
+        var d = dd.getDate();
+        return y + "/" + m + "/" + d;
+    },
+    getBettingDetail(start,end){ // 获取数据列表
+      this.thisParams1 = start;
+      this.thisParams2 = end;
+      let data = {
+        page:this.page,
+        size:this.size,
+        settleDateBegin:start || null,
+        settleDateEnd:end  || null
+      }
+      this.loading = true;
+      getBettingDetail(data).then(res => {
+        console.log("AAAA:",res)
+        if(res.data.data.success == 1){
+          this.totalPage = res.data.data.content.pageable.totalPages
+          if (this.page < 2) {
+            this.contentList = res.data.data.content.content;
+          } else {      
+            this.contentList = this.contentList.concat(res.data.data.content.content)
+          }
+          if(this.page == this.totalPage){
+            this.showEnd = true;
+          }
+        }else{
+          this.$tips.info(res.data.data.respMsg);
+          return
+        }
+        
+      })
+    },
+  }
+}
+</script>
+<style lang="stylus">
+@import "../../assets/stylus/blue";
+.bill-list 
+  overflow auto
+.changeColor
+  color $font-green-color!important
+  font-weight bold
+  font-size 0.15rem!important
+.billDetail
+  padding 0.09rem
+  background-color $mian-contentoutside-color
+  .billdetail-head
+    margin-bottom 0.1rem
+    ul
+      display flex
+      flex-direction row
+      li
+        border 0.01rem solid #323748
+        width 0.81rem
+        text-align center
+        line-height 0.3rem
+        background-color $center-back-color
+        margin-left 0.09rem
+        color $font-color
+        &:first-child
+          margin-left 0rem
+        &:nth-child(3)
+          margin-left 0.12rem
+        &:last-child
+          margin-left 0.12rem
+  .bill-content-list
+    .bill-content-head
+      height 0.3rem
+      background-color $main-header-color
+      ul
+        display flex
+        flex-direction row
+        line-height 0.3rem
+        li
+          text-align center
+          width 20%
+          color $center-font-color
+    .content-list
+      overflow auto
+      height calc(100vh - 1.34rem) !important
+      .list-data
+        li
+          display flex
+          flex-direction row
+          border-bottom 0.01rem solid #444b64
+          height 0.57rem
+          span 
+            display inline-block
+            width 20%
+            text-align center
+            line-height 0.57rem
+            color #ffffff
+
+</style>

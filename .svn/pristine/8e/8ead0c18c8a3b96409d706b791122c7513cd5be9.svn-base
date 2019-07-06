@@ -1,0 +1,67 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export const constantRouterMap = [{
+        path: '/login',
+        name: 'login',
+        component: () =>
+            import ('@/views/login/index')
+    },
+    { // 个人中心
+        path: '/memberCenter',
+        name: 'memberCenter',
+        component: () =>
+            import ('@/views/personalCenter/center')
+    },
+    { // 历史开奖
+        path: '/lotteryResults',
+        name: 'lotteryResults',
+        component: () =>
+            import ('@/views/personalCenter/lotteryResults')
+    },
+    { // 投注记录
+        path: '/betsRecord',
+        name: 'betsRecord',
+        component: () =>
+            import ('@/views/personalCenter/betsRecord')
+    },
+    { // 结算详情
+        path: '/billDetail',
+        name: 'billDetail',
+        component: () =>
+            import ('@/views/personalCenter/billDetail')
+    },
+    { // 盘口信息
+        path: '/pankouInfo',
+        name: 'pankouInfo',
+        component: () =>
+            import ('@/views/personalCenter/pankouInfo')
+    },
+    { // 游戏规则
+        path: '/gameRule',
+        name: 'gameRule',
+        component: () =>
+            import ('@/views/personalCenter/gameRule')
+    },
+    { //  彩种通用入口
+        path: '/lotteryEnter',
+        name: 'lotteryEnter',
+        component: () =>
+            import ('@/views/rulePageGroup/lotteryEnter')
+    },
+    { //  暂无数据页面
+        path: '/noneRecord',
+        name: 'noneRecord',
+        component: () =>
+            import ('@/views/personalCenter/recordGroup/noneRecord')
+    },
+]
+
+export default new Router({
+    scrollBehavior: function scrollBehavior() {
+        return { y: 0 };
+    },
+    routes: constantRouterMap
+});

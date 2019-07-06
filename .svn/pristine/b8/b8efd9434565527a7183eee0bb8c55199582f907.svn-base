@@ -1,0 +1,334 @@
+<template lang='jade'>
+    // 历史开奖
+    .pull-box
+        PullTo.pull-to(:top-load-method="topRefresh",:bottom-load-method="bottomRefresh")
+            div.scroll-list
+                ul.data-list
+                    li(v-for='item in list') 
+                        span(:class="lotteryId == 'HK_LH' ? 'numBox1' : lotteryId == 'PKT_BJ' ? 'numBox3' : happyTen() ? 'numBox3' : 'numBox2'") {{ item.gameNo }} 
+                        span(:class="lotteryId == 'HK_LH' ? 'dateBox1' : lotteryId == 'PKT_BJ' ? 'dateBox3' : happyTen() ? 'dateBox4' : 'dateBox2'") {{ item.govPrizeTime | splitDate }}
+                        // 香港彩 
+                        span.ball-arr(class="ballBox1",v-if="lotteryId == 'HK_LH'")
+                            span.ballColor(:class="changeBall(item.playBalls[0].ballType)") {{item.playBalls[0].ballType ? item.playBalls[0].ballType : "" }} {{item.playBalls[0].shengxiao ? item.playBalls[0].shengxiao : ""}}
+                            span.ballColor(:class="changeBall(item.playBalls[1].ballType)") {{item.playBalls[1].ballType ? item.playBalls[1].ballType : "" }} {{item.playBalls[1].shengxiao ? item.playBalls[1].shengxiao : ""}}
+                            span.ballColor(:class="changeBall(item.playBalls[2].ballType)") {{item.playBalls[2].ballType ? item.playBalls[2].ballType : "" }} {{item.playBalls[2].shengxiao ? item.playBalls[2].shengxiao : ""}}
+                            span.ballColor(:class="changeBall(item.playBalls[3].ballType)") {{item.playBalls[3].ballType ? item.playBalls[3].ballType : "" }} {{item.playBalls[3].shengxiao ? item.playBalls[3].shengxiao : ""}}
+                            span.ballColor(:class="changeBall(item.playBalls[4].ballType)") {{item.playBalls[4].ballType ? item.playBalls[4].ballType : "" }} {{item.playBalls[4].shengxiao ? item.playBalls[4].shengxiao : ""}}
+                            span.ballColor(:class="changeBall(item.playBalls[5].ballType)") {{item.playBalls[5].ballType ? item.playBalls[5].ballType : "" }} {{item.playBalls[5].shengxiao ? item.playBalls[5].shengxiao : ""}}
+                            span.addIcon +
+                            span.ballColor(:class="changeBall(item.playBalls[6].ballType)") {{item.playBalls[6].ballType ? item.playBalls[0].ballType : "" }} {{item.playBalls[6].shengxiao ? item.playBalls[6].shengxiao : ""}}
+                        // 快三
+                        span.ball-arr(v-else-if="fasterTable()",class="ballBox2")
+                            span.squareArr
+                                svg-icon.square(v-for="val,i in item.playBalls",:key="i",:icon-class="chengeSquareTweA(val.ballType) ? chengeSquareTweA(val.ballType) : val.ballType ")
+                        // pk10
+                        span.ball-arr(v-else-if="lotteryId == 'PKT_BJ'",class="ballBox3")  
+                            span.ballColor(v-for="val,i in item.playBalls",:key="i",:class="changeBall(val.ballType)") {{val.ballType}}
+
+                        // 快乐十分
+                        span.ball-arr(v-else-if="happyTen()",class="ballBox4")  
+                            span.ballColor(v-for="val,i in item.playBalls",:key="i",:class="changeBall(val.ballType)") {{val.ballType}}
+
+                        // 11选5 / 时时彩   
+                        span.ball-arr(v-else,class="ballBox2")
+                            span.ballColor(v-for="val,i in item.playBalls",:key="i",:class="changeBall(val.ballType)") {{val.ballType}}
+                p.endTips(v-if="showEnd") —————————&nbsp&nbsp&nbsp&nbsp&nbsp已经到底了&nbsp&nbsp&nbsp&nbsp&nbsp—————————
+        //- lotteryDialog(@changeVal="initData")
+</template>
+<script>
+import { Spinner,Button  } from 'mint-ui'
+import lotteryDialog from './lotteryDialog'
+import { getAllLottery, getHistoricRecord,getHistoricRecordList } from '@/api/memberCenter'
+import { mapState } from 'vuex'
+import PullTo from 'vue-pull-to'
+import { debug, debuglog } from 'util';
+export default {
+    name: 'allLotterySelect',
+    components: {
+        'mt-spinner':Spinner,
+        'mt-button':Button,
+        lotteryDialog,
+        PullTo
+    },
+    props:['dateTime'],
+    data() {
+        return {
+            loading:false,
+            list:[],
+            page:1,
+            pageNum:1,
+            size:15,
+            noMore: false,
+            lotteryId:"HK_LH",
+            totalPage:'1',
+            showEnd:false,
+        }
+    },
+    computed:{
+        ...mapState({
+            theTotteryId: state => state.homeData.changeLotteryId, // 一级彩种
+        })
+    },
+    mounted(){
+        this.initData(this.theTotteryId);
+    },
+    filters:{
+        splitDate(val){
+            let a = val.split('-')
+            let b = a[0].toString().split('')
+            let c = b[2] + b[3] + a[1] + a[2];
+            return c
+        }
+    },
+    methods: {
+        topRefresh(loaded){  // 上拉刷新
+            this.page = 1;
+            this.initData(this.theTotteryId)
+            loaded('done');
+        },
+        bottomRefresh(loaded){ // 下拉刷新
+            if(this.page < this.totalPage ){
+                this.page++;
+                this.initData(this.theTotteryId)
+            }
+            loaded('done');
+        },
+        fasterTable(){ // 快三判断
+            if(this.lotteryId == 'FT_HuB' || this.lotteryId == 'FT_GX' || this.lotteryId == 'FT_AH' || this.lotteryId == 'FT_JL' || this.lotteryId == 'FT_JX' || this.lotteryId == 'FT_JS' || this.lotteryId == 'FT_FJ' || this.lotteryId == 'FT_BJ'){
+                return true
+            }
+        },
+        happyTen(){ // 快乐十分
+            if(this.lotteryId == 'KLT_GD' || this.lotteryId == 'KLT_TJ' || this.lotteryId == 'KLT_HuN' || this.lotteryId == 'KLT_SX3' || this.lotteryId == 'KLT_YN' || this.lotteryId == 'KLT_SX1'){
+                return true;
+            }
+        },
+        chengeSquareTweA(val){ // 快3骰子
+            if(val){
+                switch (val) {
+                    case "1":
+                    return 'r_one'
+                    break;
+                    case "2":
+                    return "twe"
+                    break;
+                    case "3":
+                    return "three"
+                    break;
+                    case "4":
+                    return "r_four"
+                    break;
+                    case "5":
+                    return "five"
+                    break;
+                    case "6":
+                    return "six"
+                    break;
+                }
+            }
+            
+        },
+        ballSwitch(val){  // 球号颜色
+            switch (val) {
+                case "0":
+                return "ball-color ball-color0"
+                break;
+                case "1":
+                return "ball-color ball-color1"
+                break;
+                case "2":
+                return "ball-color ball-color2"
+                break;
+                case "3":
+                return "ball-color ball-color3"
+                break;
+                case "4":
+                return "ball-color ball-color4"
+                break;
+                case "5":
+                return "ball-color ball-color5"
+                break;
+                case "6":
+                return "ball-color ball-color6"
+                break;
+                case "7":
+                return "ball-color ball-color7"
+                break;
+                case "8":
+                return "ball-color ball-color8"
+                break;
+                case "9":
+                return "ball-color ball-color9"
+                break;
+            }
+        },
+        changeBall(val){ //  选择球号颜色
+            let a = val.split('');
+            let b = a[a.length-1]
+            // 快三骰子
+            if(this.lotteryId == 'FT_HuB' || this.lotteryId == 'FT_GX' || this.lotteryId == 'FT_AH' || this.lotteryId == 'FT_JL' || this.lotteryId == 'FT_JX' || this.lotteryId == 'FT_JS' || this.lotteryId == 'FT_FJ' || this.lotteryId == 'FT_BJ'){
+                switch (b) {
+                    case "1":
+                    return "r_one"
+                    break;
+                    case "2":
+                    return "twe"
+                    break;
+                    case "3":
+                    return "three"
+                    break;
+                    case "4":
+                    return "r_four"
+                    break;
+                    case "5":
+                    return "five"
+                    break;
+                    case "6":
+                    return "six"
+                    break;
+                }
+            }else{
+                return this.ballSwitch(b)
+            }
+        },
+        initData(val){  // 请求历史开奖数据列表
+            this.lotteryId = val;
+            let a  = (this.dateTime.replace('年','-').replace('月','-').replace('日','').replace('周一','')).split('-');
+            if(a[1].length == 1){
+                a[1] = '0'+a[1];
+                var parDate = (a[0]+'-'+a[1]+'-'+a[2]).split(" ");
+            }
+            let data = {
+                lotteryId:val,
+                date:parDate[0]+" 00:00:00" || null,
+                page:this.page,
+                size:this.size
+            }
+            getHistoricRecordList(data).then(response => {
+                const datas = response.data.data;
+                debugger;
+                // if(datas.success == 1){
+                //     this.totalPage = datas.content.pageable.totalPages
+                //     if(this.page < 2){
+                //         this.list = datas.content.content
+                //     }else{
+                //          this.list = this.list.concat(datas.content.content);
+                //     }
+                //     if(this.page == this.totalPage){
+                //         this.showEnd = true;
+                //     }
+                // }
+            })
+        }
+        
+    }
+}
+</script>
+<style scoped lang="stylus" scoped>
+.pull-box
+    width 100%
+.ball-arr
+    span
+        margin-right 0.05rem
+.ball-arrs
+    display flex
+    flex-direction row
+    flex-wrap wrap
+    justify-content space-between
+    span 
+        display inline-block
+.squareArr
+    margin-left 0.5rem
+    .square
+        text-align center
+        display inline-block
+        height 0.2rem 
+        width 30%
+        margin-top 0.18rem
+.addIcon
+    display inline-block
+    width 0.2rem!important
+    height 0.2rem
+.vue-pull-to-wrapper
+    width 100%
+.scroll-list
+    width 100%
+    // height calc(100vh - 0.79rem)
+    // overflow scroll
+    .data-list
+        li  
+            display flex
+            flex-direction row
+            text-align center
+            border-bottom 1px solid #444b64
+            .numBox1 // 香港彩
+                width 10%
+                padding-top 0.15rem
+            .dateBox1 // 香港彩
+                width 30%
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+                padding-top 0.15rem
+            .ballBox1 // 香港彩
+                width 60%
+            .numBox2 // 其他
+                width 20%
+                padding-top 0.1rem
+            .dateBox2 // 其他
+                width 30%
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+                padding-top 0.1rem
+            .ballBox2 // 其他
+                width 50%
+                height 0.57rem
+                line-height 0.57rem
+                padding-left 0.1rem
+            .numBox3 // PK10
+                width 20%
+                padding-top 0.16rem
+            .dateBox3 // PK10
+                width 35%
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+                padding-top 0.16rem
+                
+            .dateBox4 // 快乐十分
+                width 45%
+                overflow hidden
+                white-space nowrap
+                text-overflow ellipsis
+                padding-top 0.16rem
+            .ballBox4 // 快乐十分
+                width 35%
+                line-height 0.25rem
+                span
+                    position relative
+                    // top -0.02rem
+                    &:nth-child(5),&:nth-child(6),&:nth-child(7),&:nth-child(8)
+                        position relative
+                        top -0.07rem
+
+            .ballBox3 // PK10
+                width 45%
+                line-height 0.28rem
+                padding-left 0.1rem
+                span
+                    position relative
+                    top 0.01rem
+                    &:nth-child(6),&:nth-child(7),&:nth-child(8),&:nth-child(9),&:nth-child(10)
+                        position relative
+                        top -0.06rem
+            span 
+                display inline-block
+                color $font-color
+                    
+                    
+           
+.loading-box
+    margin-left 1.5rem
+    margin-top 0.2rem
+</style> 

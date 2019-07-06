@@ -1,0 +1,21 @@
+
+<template lang="jade">
+  .getTime
+    p(@click="getTime") 获取
+</template>
+<script>
+export default {
+  data(){
+    return{
+      getTime(){
+        var now = new Date;
+        now.setDate(now.getDate() - n);
+        return now;
+      }
+    }
+  },
+  methods:{
+    
+  }
+}
+</script>

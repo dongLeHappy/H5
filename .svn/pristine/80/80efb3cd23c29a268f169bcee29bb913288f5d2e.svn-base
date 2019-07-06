@@ -1,0 +1,100 @@
+<template lang="jade">
+    div.content
+        //- vue-banner
+        //- vue-marquee(v-if="noticeContent",:title="noticeContent")
+        .home-hotGames
+            vue-hotGames.hot-history(v-if="hotGameList.length >= 1",:hotGamesTit="hotGamesTit", :hotGamesList="hotGameList",:lotteryIcon="lotteryIcon2")
+            vue-hotGames.hot-history(v-if="historyLottery == []",:hotGamesTit="lastGamesTit", :hotGamesList="historyLottery",:lotteryIcon="lotteryIcon1")
+        vue-allGames(v-if="alreaySucces == true")
+</template>
+
+<script>
+import { homePageData } from '../../api/home/homePage'
+import banner from '@/views/common/banner'  // 走马灯
+import marquee from '@/views/common/marquee'  // 公告
+import hotGames from '@/views/home/hotGames'  // 热门彩种
+import allGames from '@/views/home/allGames'  // 全部彩种
+import { getHotGames } from '@/api/home' // 获取中奖榜单
+import { mapState} from 'vuex'
+import { log } from 'util';
+export default {
+    name: 'Index',
+    components: {
+        'vue-banner': banner,
+        'vue-marquee': marquee,
+        'vue-hotGames': hotGames,
+        'vue-allGames': allGames
+    },
+    data () {
+        return {
+            swiperOption: {//swiper3
+                autoplay: 3000,
+                speed: 1000
+            },
+            lastGamesTit: '游戏记录',
+            hotGamesTit: '热门彩种',
+            hotGameList:[],// 热门彩种
+            historyLottery:[],// 历史彩种
+            noticeContent:"", // 公告
+            lotteryIcon1:"yxjl_icon",
+            lotteryIcon2:"tmcz_icon"
+        }
+    },
+    computed:{
+        ...mapState({
+            alreaySucces: state => state.homeData.alreaySucces,
+            hotGame:state => state.homeData.hotGameList,
+        }),
+    },
+    mounted() {
+        homePageData().then((response) => {
+            let res = response.data.data
+            let tree = res.content[0].lotteryTree;
+            this.$store.state.homeData.persenalBalance = res.content[0].balance; // 余额
+            this.$store.state.homeData.noticeContent = res.content[0].content; // 公告内容
+            this.$store.state.homeData.hotGameList = res.content[0].hotLottery; // 热门彩种
+            this.$store.state.homeData.historyList = res.content[0].userVisited; // 历史彩种
+            this.hotGameList.push(res.content[0].hotLottery);
+            this.historyLottery.push(res.content[0].userVisited);
+            this.noticeContent = res.content[0].content;
+            this.$store.state.homeData.firstLottery = []; // 一级彩种
+            let obj = { id: tree[0].id, name: tree[0].name }
+            let obj1 = { id: tree[1].id, name: tree[1].name }
+            let obj2 = { id: tree[2].id, name: tree[2].name }
+            let obj3 = { id: tree[3].id, name: tree[3].name }
+            let obj4 = { id: tree[4].id, name: tree[4].name }
+            let obj5 = { id: tree[5].id, name: tree[5].name }
+            for (var i = 0; i < tree.length; i++) {
+                this.$store.state.homeData.secondLottery.push(tree[i].children); // 二级彩种
+                if(i == tree.length - 1){
+                    this.$store.state.homeData.alreaySucces = true;
+                }
+            }
+            for (var j = 0; j < this.$store.state.homeData.secondLottery.length; j++) {
+                for (var t = 0; t < this.$store.state.homeData.secondLottery[j].length; t++) {
+                    this.$store.state.homeData.allSecondLottery.push(this.$store.state.homeData.secondLottery[j][t]); // 所有彩种
+                }
+            }
+            this.$store.state.homeData.firstLottery.push(obj, obj1, obj2, obj3, obj4, obj5)  // 添加到一级彩种
+        })  
+    },
+}
+</script>
+
+<!-- 添加“scoped”属性以仅将CSS限制为此组件 -->
+<style scoped lang="stylus">
+@import "../../assets/stylus/blue";
+.content
+    width 100%
+    position relative
+    background $main-content-color
+    color $head-font-color
+    padding 0.1rem 0.1rem 0
+.home-hotGames
+    width 100%
+    height 100%
+    .hot-history
+        height 1.2rem
+        background-color #42475d
+        box-shadow 0rem 0rem 0.08rem 0rem rgba(29, 24, 26, 0.2)
+</style>

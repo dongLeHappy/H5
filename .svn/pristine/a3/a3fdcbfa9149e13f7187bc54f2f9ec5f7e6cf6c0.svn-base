@@ -1,0 +1,74 @@
+import request from '@/utils/request'
+
+export function homePageData() { // 获取首页初始化数据
+    return request({
+        baseURL: 'http://192.168.60.237/mock/',
+        url: '/5ca84cc2ea866b0dc477bbd9/wap/initMainPage',
+        method: 'post'
+    })
+}
+
+export function intervalMainPage() { // 轮询全部彩种数据
+    return request({
+        baseURL: 'http://192.168.60.237/mock/5ca84cc2ea866b0dc477bbd9/wap/',
+        url: '/cp4/front/h5/fetchHome',
+        method: 'post'
+    })
+}
+export function getRuleOrPercent(res) { // 获取玩法赔率
+    let data = { lotteryId: res.lotteryId }
+    return request({
+        baseURL: 'http://192.168.60.237/mock/5ca84cc2ea866b0dc477bbd9/wap/',
+        url: '/cp4/front/h5/oddsList',
+        method: 'post',
+        params: data
+    })
+}
+export function openDataFetch() { // 轮询全部彩种数据
+    return request({
+        baseURL: 'http://192.168.60.237/mock/5ca84cc2ea866b0dc477bbd9/wap/',
+        url: 'cp4/front/h5/fetchGame',
+        method: 'post'
+    })
+}
+export function lotteryData(res) { // 获取二级彩种玩法数据
+    let data = { lotteryId: res.lotteryId }
+    return request({
+        baseURL: 'http://192.168.60.237/mock/',
+        url: '/5ca84cc2ea866b0dc477bbd9/wap/getSeconPlayRule',
+        method: 'post',
+        params: data
+    })
+}
+
+export function openingInfo(res) { // 
+    let data = { lotteryId: res.lotteryId }
+    return request({
+        baseURL: 'http://192.168.60.237/mock/',
+        url: '/5ca84cc2ea866b0dc477bbd9/wap/openWinningInfo',
+        method: 'post',
+        params: data
+    })
+}
+
+export function confirmBetting(res) { // 投注
+    let data = {
+        lotteryId: res.lotteryId,
+        betList: res.betList
+    }
+    return request({
+        baseURL: 'http://192.168.60.237/mock/',
+        url: '/5ca84cc2ea866b0dc477bbd9/wap/bettingThis',
+        method: 'post',
+        params: data
+    })
+}
+
+
+export function getServerTime() { // 获取服务器时间
+    return request({
+        baseURL: 'http://192.168.60.237/mock/5cc6ce2214dbf10dc310ff8c/pc',
+        url: '/cp4/opening/opening/findServerTime',
+        method: 'post',
+    })
+}

@@ -1,0 +1,83 @@
+<template lang="jade">
+  div.game-rule 
+    .lottery-head
+      p(@click="showSelect")
+          span {{ changeLotteryName }}
+          svg-icon(icon-class="aroows-btm")
+    .rule-description(v-html="content")
+      //- {{content}}
+    lotteryDialog.logClass(v-if="dialog == true",@getRuleContent="getRulelistContent")
+</template>
+<script>
+import lotteryDialog from './lotteryDialog'
+import { mapState } from 'vuex'
+import { getRulelistContent } from '../../api/memberCenter'
+export default {
+  components:{
+    lotteryDialog
+  },
+  data(){
+    return{
+      lotteryName:"六合彩",
+      lotteryId:"lhc",
+      content:""
+    }
+  },
+  mounted(){
+    this.getRulelistContent(this.changeLotteryId);
+  },
+  computed:{
+    ...mapState({
+        changeLotteryId: state => state.homeData.changeLotteryId, 
+        changeLotteryName: state => state.homeData.changeLotteryName, 
+    }),
+    dialog:{
+      get() {
+          return this.$store.state.homeData.showSelect
+      },
+      set(item) {
+          return item
+      }
+    }
+  },
+  methods:{
+    showSelect(){
+      this.$store.state.homeData.showSelect = true;
+    },
+    getRulelistContent(val){
+      // let data ={lotteryId:this.changeLotteryId == "" ? 'lhc' :this.changeLotteryId }
+      let data ={lotteryId:val }
+      getRulelistContent(data).then(res => {
+        this.content = res.data.content
+      })
+    }
+  }
+}
+</script>
+<style lang="stylus">
+@import "../../assets/stylus/blue";
+.game-rule 
+  background-color $mian-contentoutside-color
+  padding 0.1rem 0.1rem 0
+  .lottery-head
+    border-bottom 0.01rem solid #444b64
+    padding-bottom 0.1rem
+    p
+        width 1.11rem
+        text-align center
+        background-color $center-back-color
+        line-height 0.28rem
+        margin 0 auto
+        color $font-color
+        span 
+            margin-right 0.1rem
+  .rule-description
+    padding 0.1rem 0.1rem 0
+    overflow auto
+    height calc(100vh - 0.8rem) !important
+    line-height 0.35rem
+    p 
+      // text-align center
+      color $font-color
+      // font-size .18rem
+</style>

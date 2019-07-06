@@ -1,0 +1,24 @@
+// tips颜色
+$tips-bg-color = #73e0c3
+$tips-text-color = #fefefe
+$tips-success-color = #086f00
+$tips-warning-color = #e88300
+$tips-error-color = #bd0303
+
+// 彩票颜色
+
+// 主页颜色集
+$head-font-color = #ffffff   // 字体颜色
+$personal-balance-color = #01c8b3  // 个人中心金额颜色 --- tab切换选中颜色
+$main-header-color =  #32374a  // 主页头部颜色
+$main-content-color = #3a3f53  // 主页内容背景颜色
+$main-msg-color = #31374d  // 主页公告栏颜色
+$mian-contentoutside-color = #42475d
+$lottery-color = #a7b3d9  // 彩种字体颜色
+$lottery-tab-color = #3a3f53  // 彩种切换栏此种背景色
+
+$lottery-border = #545a72 //玩法边框颜色
+
+
+$bets-bg = #393f55//投注单的背景色
+$bets-del-btn = #780b0b // 投注弹框删除按钮颜色
